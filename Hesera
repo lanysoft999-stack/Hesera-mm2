@@ -1,0 +1,2053 @@
+-- ============================================================
+--  EXTERNAL HESERACFG v7.7 - FINAL FIXED VERSION
+--  Исправлено: Логотип огня (нарисованный), удалена подсветка трупов,
+--  исправлен круг FOV, увеличен водяной знак
+-- ============================================================
+
+local player = game.Players.LocalPlayer
+local Mouse = player:GetMouse()
+local camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
+local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
+local CoreGui = game:GetService("CoreGui")
+local playerGui = player:WaitForChild("PlayerGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ===== НАСТРОЙКА ЦВЕТА МЕНЮ =====
+local MenuColor = "Red"
+
+local function getMenuColor()
+    if MenuColor == "Red" then
+        return Color3.fromRGB(255, 0, 0), Color3.fromRGB(5, 0, 0), Color3.fromRGB(10, 0, 0), Color3.fromRGB(3, 0, 0), Color3.fromRGB(20, 0, 0), Color3.fromRGB(30, 0, 0), Color3.fromRGB(15, 0, 0)
+    elseif MenuColor == "Blue" then
+        return Color3.fromRGB(0, 150, 255), Color3.fromRGB(0, 0, 5), Color3.fromRGB(0, 0, 10), Color3.fromRGB(0, 0, 3), Color3.fromRGB(0, 0, 20), Color3.fromRGB(0, 0, 30), Color3.fromRGB(0, 0, 15)
+    elseif MenuColor == "White" then
+        return Color3.fromRGB(255, 255, 255), Color3.fromRGB(5, 5, 5), Color3.fromRGB(10, 10, 10), Color3.fromRGB(3, 3, 3), Color3.fromRGB(20, 20, 20), Color3.fromRGB(30, 30, 30), Color3.fromRGB(15, 15, 15)
+    elseif MenuColor == "Purple" then
+        return Color3.fromRGB(180, 0, 255), Color3.fromRGB(5, 0, 5), Color3.fromRGB(10, 0, 10), Color3.fromRGB(3, 0, 3), Color3.fromRGB(20, 0, 20), Color3.fromRGB(30, 0, 30), Color3.fromRGB(15, 0, 15)
+    elseif MenuColor == "Rainbow" then
+        local hue = tick() % 1
+        return Color3.fromHSV(hue, 1, 1), Color3.fromHSV(hue, 0.5, 0.05), Color3.fromHSV(hue, 0.5, 0.1), Color3.fromHSV(hue, 0.5, 0.03), Color3.fromHSV(hue, 0.5, 0.2), Color3.fromHSV(hue, 0.5, 0.3), Color3.fromHSV(hue, 0.5, 0.15)
+    end
+    return Color3.fromRGB(255, 0, 0), Color3.fromRGB(5, 0, 0), Color3.fromRGB(10, 0, 0), Color3.fromRGB(3, 0, 0), Color3.fromRGB(20, 0, 0), Color3.fromRGB(30, 0, 0), Color3.fromRGB(15, 0, 0)
+end
+
+-- ===== СИСТЕМА УВЕДОМЛЕНИЙ =====
+local NotificationGui = Instance.new("ScreenGui", playerGui)
+NotificationGui.Name = "HeseraNotifications"
+NotificationGui.IgnoreGuiInset = true
+NotificationGui.ResetOnSpawn = false
+NotificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local activeNotifications = {}
+
+local function showNotification(text, symbol, duration)
+    if #activeNotifications > 4 then
+        local old = table.remove(activeNotifications, 1)
+        if old and old.Parent then old:Destroy() end
+    end
+    
+    local notif = Instance.new("Frame", NotificationGui)
+    notif.Size = UDim2.new(0, 240, 0, 35)
+    notif.Position = UDim2.new(1, 10, 0.80, -#activeNotifications * 40)
+    notif.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    notif.BackgroundTransparency = 0.1
+    notif.BorderSizePixel = 0
+    notif.ZIndex = 99999
+    notif.ClipsDescendants = true
+    Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
+    
+    local leftBar = Instance.new("Frame", notif)
+    leftBar.Size = UDim2.new(0, 3, 1, 0)
+    leftBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    leftBar.BorderSizePixel = 0
+    leftBar.ZIndex = 99999
+    
+    local symbolLabel = Instance.new("TextLabel", notif)
+    symbolLabel.Size = UDim2.new(0, 25, 1, 0)
+    symbolLabel.Position = UDim2.new(0, 8, 0, 0)
+    symbolLabel.BackgroundTransparency = 1
+    symbolLabel.Text = symbol or "●"
+    symbolLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    symbolLabel.Font = Enum.Font.GothamBold
+    symbolLabel.TextSize = 14
+    symbolLabel.ZIndex = 99999
+    
+    local label = Instance.new("TextLabel", notif)
+    label.Size = UDim2.new(1, -40, 1, 0)
+    label.Position = UDim2.new(0, 35, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 9
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 99999
+    
+    table.insert(activeNotifications, notif)
+    
+    notif.Position = UDim2.new(1, 250, notif.Position.Y.Scale, notif.Position.Y.Offset)
+    TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(1, -250, notif.Position.Y.Scale, notif.Position.Y.Offset)}):Play()
+    
+    task.delay(duration or 3, function()
+        if notif and notif.Parent then
+            local index = table.find(activeNotifications, notif)
+            if index then table.remove(activeNotifications, index) end
+            TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(1, 250, notif.Position.Y.Scale, notif.Position.Y.Offset)}):Play()
+            task.wait(0.3)
+            notif:Destroy()
+        end
+    end)
+end
+
+local function notifySaved() showNotification("Конфиг сохранён!", "✔") end
+local function notifyLoaded() showNotification("Конфиг загружен!", "↩") end
+local function notifyCopied() showNotification("Конфиг скопирован!", "✉") end
+local function notifyPasted() showNotification("Конфиг вставлен!", "✎") end
+local function notifyApplied(name) showNotification("Применён: " .. name, "✓") end
+local function notifyDeleted(name) showNotification("Удалён: " .. name, "✘") end
+local function notifyKnifeKill(count) showNotification("Убито ножом: " .. count .. " игроков!", "🔪") end
+local function notifyShootKill(name) showNotification("Застрелен: " .. name, "🎯") end
+local function notifyKillAll(count) showNotification("Убито всех: " .. count .. " игроков!", "💀") end
+
+-- ===== ЯЗЫК =====
+local Lang = "RU"
+local L = {
+    RU = {
+        menu = "МЕНЮ", rage = "RAGE", aim = "AIM", vis = "VISUAL", world = "WORLD", cfg = "CONFIG",
+        godMode = "[B] Бог", antiKnife = "[A] Анти-Нож", antiFling = "[F] Анти-Флинг",
+        fly = "[WASD] Полёт", flySpeed = "Скор. Полёта",
+        noclip = "[N] Ноклип", noclipSpeed = "Скор. Ноклипа",
+        bhop = "[BH] Баннихоп", bhopSpeed = "Скор. BHOP", maxSpeed = "Макс. Скор",
+        spinbot = "[S] Спинбот", spinSpeed = "Скор. Вращ",
+        gunGrab = "[E] ТП к Оружию", clickTP = "[LMB] ТП по Клику",
+        removeUI = "[X] Удалить Интерфейс", shiftLock = "[L] Фиксация Экрана",
+        blackSky = "[-] Чёрное Небо",
+        visualEffects = "*** Визуал Эффекты",
+        glowBody = "Свечение Тела", orbitOrbs = "Орбитальные Сферы", orbColor = "Цвет Сфер",
+        floatingParticles = "Летающие Частицы", particleColor = "Цвет Частиц",
+        white = "Белый", red = "Красный", blue = "Синий", purple = "Сирен.", cyan = "Голубой",
+        voidMurderer = "Войд Убийцы", voidSheriff = "Войд Шерифа",
+        tpMurderer = "ТП к Убийце", tpSheriff = "ТП к Шерифу",
+        tpLobby = "ТП в Лобби", killAll = "Убить Всех",
+        aimbotFOV = "(*) FOV Аимбот", fovRadius = "Размер Круга", aimbotRange = "Дист. Наводки",
+        aimMode = "Режим Наводки", weaponOnly = "Только с Оружием", always = "Всегда",
+        silentAim = "[/] Silent Aim [R]", fireButton = "Кнопка Действия",
+        knifeRange = "Дист. Ножа",
+        esp = "ESP", box = "Бокс", tracers = "Трейсеры", names = "Имена",
+        distance = "Дистанция", chams = "Чамсы",
+        crosshair = "(+) Прицел", crosshairSize = "Размер Прицела",
+        crosshairColor = "Цвет Прицела", crosshairThickness = "Толщина Линий",
+        thin = "Тонкие", thick = "Толстые",
+        graphicsMode = "=== Режим Графики",
+        ultra = ">> Ультра", dark = ">> Мрачная", off = ">> Выкл",
+        fog = "Туман", fogDist = "Дист. Тумана", fogColor = "Цвет Тумана",
+        fov = "FOV", fovValue = "Знач. FOV", fpsBoost = "FPS Буст",
+        menuColor = "Цвет Меню",
+        saveConfig = "[S] Сохранить", loadConfig = "[L] Загрузить", destroy = "[X] УНИЧТОЖИТЬ",
+        copyConfig = "[C] Копировать", pasteConfig = "[V] Вставить",
+        saveAs = "[+] Сохранить как...", myConfigs = "=== МОИ КОНФИГИ",
+        apply = "Применить", share = "TG", delete = "X",
+        go = ">>", loaded = "ЗАГРУЖЕН!", saved = "СОХРАНЕНО!",
+        copied = "СКОПИРОВАНО!", pasted = "ВСТАВЛЕНО!",
+        actions = "=== ДЕЙСТВИЯ", silentAimTitle = "SILENT AIM",
+        visualFX = "--- Визуал FX", crosshairTitle = "--- ПРИЦЕЛ", fogTitle = "--- ТУМАН",
+        emptyConfigs = "Нет сохранённых конфигов"
+    },
+    EN = {
+        menu = "MENU", rage = "RAGE", aim = "AIM", vis = "VISUAL", world = "WORLD", cfg = "CONFIG",
+        godMode = "[B] God Mode", antiKnife = "[A] Anti-Knife", antiFling = "[F] Anti-Fling",
+        fly = "[WASD] Fly", flySpeed = "Fly Speed",
+        noclip = "[N] Noclip", noclipSpeed = "Noclip Speed",
+        bhop = "[BH] BunnyHop", bhopSpeed = "BHOP Speed", maxSpeed = "Max Speed",
+        spinbot = "[S] Spinbot", spinSpeed = "Spin Speed",
+        gunGrab = "[E] Gun Grab", clickTP = "[LMB] Click TP",
+        removeUI = "[X] Remove UI", shiftLock = "[L] Shift Lock",
+        blackSky = "[-] Black Sky",
+        visualEffects = "*** Visual Effects",
+        glowBody = "Body Glow", orbitOrbs = "Orbit Orbs", orbColor = "Orb Color",
+        floatingParticles = "Floating Particles", particleColor = "Particle Color",
+        white = "White", red = "Red", blue = "Blue", purple = "Purple", cyan = "Cyan",
+        voidMurderer = "Void Murderer", voidSheriff = "Void Sheriff",
+        tpMurderer = "TP Murderer", tpSheriff = "TP Sheriff",
+        tpLobby = "TP Lobby", killAll = "Kill All",
+        aimbotFOV = "(*) FOV Aimbot", fovRadius = "FOV Radius", aimbotRange = "Aim Range",
+        aimMode = "Aim Mode", weaponOnly = "Weapon Only", always = "Always",
+        silentAim = "[/] Silent Aim [R]", fireButton = "Action Button",
+        knifeRange = "Knife Range",
+        esp = "ESP", box = "Box", tracers = "Tracers", names = "Names",
+        distance = "Distance", chams = "Chams",
+        crosshair = "(+) Crosshair", crosshairSize = "Crosshair Size",
+        crosshairColor = "Crosshair Color", crosshairThickness = "Line Thickness",
+        thin = "Thin", thick = "Thick",
+        graphicsMode = "=== Graphics Mode",
+        ultra = ">> Ultra", dark = ">> Dark", off = ">> Off",
+        fog = "Fog", fogDist = "Fog Dist", fogColor = "Fog Color",
+        fov = "FOV", fovValue = "FOV Value", fpsBoost = "FPS Boost",
+        menuColor = "Menu Color",
+        saveConfig = "[S] Save", loadConfig = "[L] Load", destroy = "[X] DESTROY",
+        copyConfig = "[C] Copy", pasteConfig = "[V] Paste",
+        saveAs = "[+] Save as...", myConfigs = "=== MY CONFIGS",
+        apply = "Apply", share = "TG", delete = "X",
+        go = ">>", loaded = "LOADED!", saved = "SAVED!",
+        copied = "COPIED!", pasted = "PASTED!",
+        actions = "=== ACTIONS", silentAimTitle = "SILENT AIM",
+        visualFX = "--- Visual FX", crosshairTitle = "--- CROSSHAIR", fogTitle = "--- FOG",
+        emptyConfigs = "No saved configs"
+    }
+}
+
+local T = L[Lang] or L["EN"]
+
+-- ===== ВОДЯНОЙ ЗНАК (УВЕЛИЧЕННЫЙ) =====
+local watermarkFrame = nil
+local function createWatermark()
+    if playerGui:FindFirstChild("HeseraWatermark") then playerGui.HeseraWatermark:Destroy() end
+    local wmGui = Instance.new("ScreenGui", playerGui)
+    wmGui.Name = "HeseraWatermark"; wmGui.IgnoreGuiInset = true; wmGui.ResetOnSpawn = false; wmGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    watermarkFrame = Instance.new("TextButton", wmGui)
+    watermarkFrame.Size = UDim2.new(0, 250, 0, 28)
+    watermarkFrame.Position = UDim2.new(0.5, -125, 0, 5)
+    watermarkFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    watermarkFrame.BackgroundTransparency = 0.15
+    watermarkFrame.BorderSizePixel = 0
+    watermarkFrame.ZIndex = 99999
+    watermarkFrame.Text = ""
+    watermarkFrame.AutoButtonColor = false
+    Instance.new("UICorner", watermarkFrame).CornerRadius = UDim.new(0, 5)
+    local textLabel = Instance.new("TextLabel", watermarkFrame)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 10
+    textLabel.TextXAlignment = Enum.TextXAlignment.Center
+    textLabel.ZIndex = 99999
+    textLabel.RichText = true
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.Text = '<font color="rgb(255,50,50)">' .. os.date("%H:%M:%S") .. '</font> <font color="rgb(255,255,255)">| t.me/heseracfg</font>'
+    
+    spawn(function()
+        while watermarkFrame and watermarkFrame.Parent do
+            textLabel.Text = '<font color="rgb(255,50,50)">' .. os.date("%H:%M:%S") .. '</font> <font color="rgb(255,255,255)">| t.me/heseracfg</font>'
+            task.wait(1)
+        end
+    end)
+    
+    return watermarkFrame
+end
+
+local wmButton = createWatermark()
+player.CharacterAdded:Connect(function() if not playerGui:FindFirstChild("HeseraWatermark") then wmButton = createWatermark() end end)
+
+-- ===== АНТИ-БАН =====
+pcall(function() game:GetService("ScriptContext").Script.Name = "CFG_" .. HttpService:GenerateGUID(false) end)
+pcall(function() for _, v in pairs(game:GetDescendants()) do if v:IsA("RemoteEvent") and v.Name:lower():find("report") then hookfunction(v, "FireServer", function() return nil end); break end end end)
+pcall(function() for _, v in pairs(game:GetDescendants()) do if v:IsA("RemoteEvent") and v.Name:lower():find("kick") then hookfunction(v, "FireServer", function() return nil end); break end end end)
+
+-- ===== НАСТРОЙКИ =====
+local ESP = {Enabled = false, Box = false, Tracer = false, Name = false, Distance = false, Chams = false}
+local Visual = {Skeleton = false, SphereTracer = false, Trail = false, Footsteps = false, Fog = false, BlackSky = false, GraphicsMode = "Off"}
+local VisualEffects = {GlowBody = false, OrbitOrbs = false, OrbColor = "White", FloatingParticles = false, ParticleColor = "White"}
+local MainExtras = {BunnyHop = false, Spinbot = false, ClickTP = false, AntiFling = true, RemoveUI = false, ShiftLock = false}
+local CrosshairSettings = {Enabled = true, Size = 20, Color = "White", Thickness = "Thin"}
+local FogSettings = {Distance = 50, ColorMode = "White", Enabled = false}
+local SkySettings = {Enabled = false, Color = "Black"}
+local AimbotFOV = {Enabled = false, Radius = 110, Range = 500, Mode = "Always"}
+local Aimbot = {SilentAim = false, FireButtonEnabled = false}
+local MovementSettings = {BunnyHopSpeed = 1.5, BunnyHopMaxSpeed = 100, SpinSpeed = 20, SpinMode = "Normal", NoclipSpeed = 50, FlySpeed = 50}
+local SelectedColor = Color3.fromRGB(255, 255, 255)
+local FOV = 70; local FOV_Enabled = false
+local GunGrabEnabled = false
+local FPSBoost = false
+local KNIFE_RANGE = 15
+
+-- ===== СИСТЕМА КОНФИГОВ =====
+local function getAllSettings()
+    return {
+        ESP = ESP, Visual = Visual, VisualEffects = VisualEffects,
+        MainExtras = MainExtras, CrosshairSettings = CrosshairSettings,
+        FogSettings = FogSettings, SkySettings = SkySettings,
+        AimbotFOV = AimbotFOV, Aimbot = Aimbot,
+        MovementSettings = MovementSettings, FOV = FOV,
+        FOV_Enabled = FOV_Enabled, FPSBoost = FPSBoost,
+        GunGrabEnabled = GunGrabEnabled, KNIFE_RANGE = KNIFE_RANGE,
+        MenuColor = MenuColor
+    }
+end
+
+local function applySettings(data)
+    if not data then return end
+    if data.MenuColor then MenuColor = data.MenuColor; updateMenuColors() end
+    if data.ESP then for k,v in pairs(data.ESP) do ESP[k] = v end end
+    if data.Visual then 
+        for k,v in pairs(data.Visual) do Visual[k] = v end 
+        applyGraphicsMode()
+        if Visual.Fog and FogSettings.Enabled then
+            updateFogColor()
+            Lighting.FogEnd = FogSettings.Distance
+            Lighting.FogStart = FogSettings.Distance * 0.3
+        end
+        if Visual.BlackSky then setSkyColor("Black") end
+    end
+    if data.VisualEffects then 
+        for k,v in pairs(data.VisualEffects) do VisualEffects[k] = v end
+        if player.Character then applyEffects(player.Character) end
+    end
+    if data.MainExtras then 
+        for k,v in pairs(data.MainExtras) do MainExtras[k] = v end
+        if lockButtonFrame then lockButtonFrame.Visible = MainExtras.ShiftLock end
+        if MainExtras.ShiftLock then enableShiftLock() else disableShiftLock() end
+        if MainExtras.BunnyHop then toggleBunnyHop(true) end
+        if MainExtras.Spinbot then toggleSpinbot(true) end
+        if Rage.Fly then setFly(true) end
+        if Rage.Noclip then toggleNoclip(true) end
+        if MainExtras.ClickTP then toggleClickTP(true) end
+        if MainExtras.RemoveUI then toggleRemoveUI(true) end
+    end
+    if data.CrosshairSettings then for k,v in pairs(data.CrosshairSettings) do CrosshairSettings[k] = v end; updateCrosshairUI() end
+    if data.FogSettings then 
+        for k,v in pairs(data.FogSettings) do FogSettings[k] = v end
+        if FogSettings.Enabled then updateFogColor(); Lighting.FogEnd = FogSettings.Distance; Lighting.FogStart = FogSettings.Distance * 0.3 end
+    end
+    if data.SkySettings then for k,v in pairs(data.SkySettings) do SkySettings[k] = v end; if SkySettings.Enabled then setSkyColor(SkySettings.Color) end end
+    if data.AimbotFOV then 
+        for k,v in pairs(data.AimbotFOV) do AimbotFOV[k] = v end
+        updateFOVSize(); 
+        if fovCircle then fovCircle.Visible = AimbotFOV.Enabled end
+        if AimbotFOV.Enabled then hookFire() end
+    end
+    if data.Aimbot then 
+        for k,v in pairs(data.Aimbot) do Aimbot[k] = v end
+        updateActionButtonVisibility()
+        if Aimbot.SilentAim then hookFire() end
+    end
+    if data.MovementSettings then for k,v in pairs(data.MovementSettings) do MovementSettings[k] = v end end
+    if data.FOV then FOV = data.FOV end
+    if data.FOV_Enabled ~= nil then FOV_Enabled = data.FOV_Enabled; camera.FieldOfView = data.FOV_Enabled and FOV or 70 end
+    if data.FPSBoost ~= nil then FPSBoost = data.FPSBoost; Lighting.GlobalShadows = not data.FPSBoost; Lighting.Brightness = data.FPSBoost and 1 or 2 end
+    if data.GunGrabEnabled ~= nil then GunGrabEnabled = data.GunGrabEnabled; if gunBtn then gunBtn.Visible = data.GunGrabEnabled end end
+    if data.KNIFE_RANGE ~= nil then KNIFE_RANGE = data.KNIFE_RANGE end
+end
+
+local function saveConfig()
+    local data = getAllSettings()
+    local json = HttpService:JSONEncode(data)
+    writefile("HESERACFG_Config.json", json)
+    _G.HeseracfgConfig = data
+    notifySaved()
+end
+
+local function loadConfig()
+    local success, result = pcall(function()
+        if isfile("HESERACFG_Config.json") then return readfile("HESERACFG_Config.json") end
+    end)
+    if success and result and result ~= "" then
+        local success2, data = pcall(function() return HttpService:JSONDecode(result) end)
+        if success2 and data then applySettings(data); notifyLoaded() end
+    end
+end
+
+local function copyConfig()
+    local data = getAllSettings(); local json = HttpService:JSONEncode(data)
+    setclipboard(json); notifyCopied()
+end
+
+local function pasteConfig()
+    local clip = getclipboard()
+    if clip and clip ~= "" then
+        local success, data = pcall(function() return HttpService:JSONDecode(clip) end)
+        if success and data then applySettings(data); notifyPasted() end
+    end
+end
+
+-- ===== ГРАФИКА =====
+local graphicsData = {
+    originalSettings = {},
+    floor = nil,
+    surfaceAppearance = nil,
+    reflectionProbe = nil,
+    bloom = nil,
+    atmosphere = nil,
+    colorCorrection = nil,
+    blur = nil,
+    rain = nil,
+    vignetteGuis = {}
+}
+
+local function saveOriginalSettings()
+    graphicsData.originalSettings = {
+        EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+        EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+        ShadowSoftness = Lighting.ShadowSoftness,
+        ClockTime = Lighting.ClockTime,
+        Brightness = Lighting.Brightness,
+        Ambient = Lighting.Ambient,
+        OutdoorAmbient = Lighting.OutdoorAmbient,
+    }
+end
+
+local function clearGraphics()
+    if graphicsData.originalSettings.EnvironmentSpecularScale then
+        Lighting.EnvironmentSpecularScale = graphicsData.originalSettings.EnvironmentSpecularScale
+        Lighting.EnvironmentDiffuseScale = graphicsData.originalSettings.EnvironmentDiffuseScale
+        Lighting.ShadowSoftness = graphicsData.originalSettings.ShadowSoftness
+        Lighting.ClockTime = graphicsData.originalSettings.ClockTime
+        Lighting.Brightness = graphicsData.originalSettings.Brightness
+        Lighting.Ambient = graphicsData.originalSettings.Ambient
+        Lighting.OutdoorAmbient = graphicsData.originalSettings.OutdoorAmbient
+    end
+    
+    for _, child in ipairs(Lighting:GetChildren()) do
+        if child:IsA("PostEffect") or child:IsA("Atmosphere") then child:Destroy() end
+    end
+    
+    if graphicsData.bloom then graphicsData.bloom:Destroy(); graphicsData.bloom = nil end
+    if graphicsData.atmosphere then graphicsData.atmosphere:Destroy(); graphicsData.atmosphere = nil end
+    if graphicsData.colorCorrection then graphicsData.colorCorrection:Destroy(); graphicsData.colorCorrection = nil end
+    if graphicsData.blur then graphicsData.blur:Destroy(); graphicsData.blur = nil end
+    if graphicsData.rain then graphicsData.rain:Destroy(); graphicsData.rain = nil end
+    if graphicsData.surfaceAppearance then graphicsData.surfaceAppearance:Destroy(); graphicsData.surfaceAppearance = nil end
+    if graphicsData.reflectionProbe then graphicsData.reflectionProbe:Destroy(); graphicsData.reflectionProbe = nil end
+    if graphicsData.floor and graphicsData.floor.Name == "AutoMirrorFloor" then
+        graphicsData.floor:Destroy()
+        graphicsData.floor = nil
+    end
+    
+    for _, gui in pairs(graphicsData.vignetteGuis) do gui:Destroy() end
+    graphicsData.vignetteGuis = {}
+end
+
+local function setupMirrorFloor()
+    local floor = Workspace:FindFirstChild("Baseplate") or Workspace:FindFirstChild("Floor") or Workspace:FindFirstChild("AutoMirrorFloor")
+    
+    if not floor then
+        floor = Instance.new("Part")
+        floor.Name = "AutoMirrorFloor"
+        floor.Size = Vector3.new(600, 1, 600)
+        floor.Position = Vector3.new(0, -0.5, 0)
+        floor.Anchored = true
+        floor.Parent = Workspace
+    end
+    
+    graphicsData.floor = floor
+    floor.Material = Enum.Material.Metal
+    floor.Reflectance = 1.0
+    floor.Color = Color3.fromRGB(5, 5, 7)
+    
+    graphicsData.surfaceAppearance = floor:FindFirstChildOfClass("SurfaceAppearance") or Instance.new("SurfaceAppearance")
+    graphicsData.surfaceAppearance.AlphaMode = Enum.AlphaMode.Overlay
+    graphicsData.surfaceAppearance.ColorMap = "rbxassetid://9104085443"
+    graphicsData.surfaceAppearance.NormalMap = "rbxassetid://9104085934"
+    graphicsData.surfaceAppearance.RoughnessMap = "rbxassetid://9104086438"
+    graphicsData.surfaceAppearance.Parent = floor
+    
+    graphicsData.reflectionProbe = Workspace:FindFirstChild("AdminReflectionProbe") or Instance.new("IndoorReflectionProbe")
+    graphicsData.reflectionProbe.Name = "AdminReflectionProbe"
+    graphicsData.reflectionProbe.Position = Vector3.new(0, 5, 0)
+    graphicsData.reflectionProbe.Brightness = 1.5
+    graphicsData.reflectionProbe.TimeSlice = Enum.TimeSlice.EveryFrame
+    graphicsData.reflectionProbe.Parent = Workspace
+end
+
+local function enableUltraGraphics()
+    saveOriginalSettings()
+    clearGraphics()
+    
+    Lighting.EnvironmentSpecularScale = 1
+    Lighting.EnvironmentDiffuseScale = 1
+    Lighting.ShadowSoftness = 0.01
+    Lighting.ClockTime = 16.5
+    Lighting.Brightness = 4.5
+    Lighting.Ambient = Color3.fromRGB(40, 40, 50)
+    Lighting.OutdoorAmbient = Color3.fromRGB(20, 20, 25)
+    
+    graphicsData.bloom = Instance.new("BloomEffect", Lighting)
+    graphicsData.bloom.Intensity = 0.95
+    graphicsData.bloom.Size = 32
+    graphicsData.bloom.Threshold = 0.6
+    
+    setupMirrorFloor()
+end
+
+local function enableDarkGraphics()
+    saveOriginalSettings()
+    clearGraphics()
+    
+    Lighting.EnvironmentSpecularScale = 1
+    Lighting.EnvironmentDiffuseScale = 0.5
+    Lighting.ShadowSoftness = 0.1
+    Lighting.ClockTime = 17.5
+    Lighting.Brightness = 1.5
+    
+    graphicsData.atmosphere = Instance.new("Atmosphere", Lighting)
+    graphicsData.atmosphere.Density = 0.4
+    graphicsData.atmosphere.Offset = 0.2
+    graphicsData.atmosphere.Color = Color3.fromRGB(130, 140, 160)
+    graphicsData.atmosphere.Decay = Color3.fromRGB(90, 100, 120)
+    graphicsData.atmosphere.Glare = 0.5
+    graphicsData.atmosphere.Haze = 2
+    
+    graphicsData.bloom = Instance.new("BloomEffect", Lighting)
+    graphicsData.bloom.Intensity = 1.3
+    graphicsData.bloom.Size = 40
+    graphicsData.bloom.Threshold = 0.5
+    
+    graphicsData.colorCorrection = Instance.new("ColorCorrectionEffect", Lighting)
+    graphicsData.colorCorrection.Brightness = -0.05
+    graphicsData.colorCorrection.Contrast = 0.45
+    graphicsData.colorCorrection.Saturation = -0.1
+    graphicsData.colorCorrection.TintColor = Color3.fromRGB(220, 230, 255)
+    
+    graphicsData.blur = Instance.new("BlurEffect", Lighting)
+    graphicsData.blur.Size = 1
+    
+    graphicsData.rain = Instance.new("Rain", Workspace)
+    graphicsData.rain.Name = "RealStorm"
+    graphicsData.rain.Intensity = 0.85
+    graphicsData.rain.Speed = 1.2
+    graphicsData.rain.Color = Color3.fromRGB(225, 235, 255)
+    graphicsData.rain.Opacity = 0.4
+    graphicsData.rain.SplashIntensity = 1.0
+    graphicsData.rain.SplashScale = 1.2
+    graphicsData.rain.Straightness = 0.95
+    
+    setupMirrorFloor()
+    
+    if graphicsData.floor then graphicsData.floor.Color = Color3.fromRGB(12, 14, 18) end
+    if graphicsData.reflectionProbe then
+        graphicsData.reflectionProbe.Position = Vector3.new(0, 6, 0)
+        graphicsData.reflectionProbe.Brightness = 1.4
+    end
+end
+
+local function applyGraphicsMode()
+    if Visual.GraphicsMode == "Ultra" then
+        enableUltraGraphics()
+    elseif Visual.GraphicsMode == "Dark" then
+        enableDarkGraphics()
+    else
+        clearGraphics()
+    end
+end
+
+local function setGraphicsMode(mode)
+    Visual.GraphicsMode = mode
+    applyGraphicsMode()
+end
+
+-- ===== ЧЁРНОЕ НЕБО =====
+local function setSkyColor(color)
+    if color == "Black" then
+        Lighting.Ambient = Color3.fromRGB(20, 20, 25); Lighting.OutdoorAmbient = Color3.fromRGB(10, 10, 15)
+        Lighting.Brightness = 0.3; Lighting.ClockTime = 0
+    else
+        Lighting.Ambient = Color3.fromRGB(127, 127, 127); Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.Brightness = 2; Lighting.ClockTime = 14
+    end
+end
+
+-- ===== AIMBOT FOV (ИСПРАВЛЕННЫЙ КРУГ) =====
+local fovFrame = nil
+local fovCircle = nil
+local function createFOVCircle()
+    if playerGui:FindFirstChild("AimbotFOV") then playerGui.AimbotFOV:Destroy() end
+    local fovGui = Instance.new("ScreenGui", playerGui)
+    fovGui.Name = "AimbotFOV"; fovGui.IgnoreGuiInset = true; fovGui.ResetOnSpawn = false
+    fovGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    -- Контейнер по центру экрана
+    fovFrame = Instance.new("Frame", fovGui)
+    fovFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    fovFrame.Size = UDim2.new(0, AimbotFOV.Radius * 2, 0, AimbotFOV.Radius * 2)
+    fovFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    fovFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    fovFrame.BackgroundTransparency = 0.92
+    fovFrame.BorderSizePixel = 0
+    fovFrame.Visible = false
+    fovFrame.ZIndex = 999
+    Instance.new("UICorner", fovFrame).CornerRadius = UDim.new(1, 0)
+    
+    -- Обводка круга
+    local stroke = Instance.new("UIStroke", fovFrame)
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 2.5
+    stroke.Transparency = 0.3
+    stroke.LineJoinMode = Enum.LineJoinMode.Round
+    
+    fovCircle = fovFrame
+    return fovFrame
+end
+fovCircle = createFOVCircle()
+
+local function updateFOVSize()
+    if fovCircle then 
+        fovCircle.Size = UDim2.new(0, AimbotFOV.Radius * 2, 0, AimbotFOV.Radius * 2) 
+    end
+end
+
+local function getPlayerRole(plr) 
+    if not plr or not plr.Character then return "Innocent" end
+    local char = plr.Character
+    if char:FindFirstChild("Knife") or (plr.Backpack and plr.Backpack:FindFirstChild("Knife")) then return "Murderer" end
+    if char:FindFirstChild("Gun") or (plr.Backpack and plr.Backpack:FindFirstChild("Gun")) then return "Sheriff" end
+    return "Innocent"
+end
+
+local function getMyRole() return getPlayerRole(player) end
+
+local function hasWeapon()
+    local char = player.Character; if not char then return false end
+    return char:FindFirstChild("Gun") ~= nil or (player.Backpack and player.Backpack:FindFirstChild("Gun") ~= nil)
+end
+
+local function hasKnife()
+    local char = player.Character; if not char then return false end
+    return char:FindFirstChild("Knife") ~= nil or (player.Backpack and player.Backpack:FindFirstChild("Knife") ~= nil)
+end
+
+local function getTargetInFOV()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and getPlayerRole(p) == "Murderer" then
+            local char = p.Character; local head = char and char:FindFirstChild("Head")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if head and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+                local myChar = player.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                    local dist = (myChar.HumanoidRootPart.Position - hrp.Position).Magnitude
+                    if dist > AimbotFOV.Range then continue end
+                end
+                local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local screenSize = camera.ViewportSize
+                    local centerScreen = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
+                    if distance <= AimbotFOV.Radius then return head end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function getMurderer()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and getPlayerRole(p) == "Murderer" then
+            local char = p.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+                return char.HumanoidRootPart
+            end
+        end
+    end
+    return nil
+end
+
+-- ===== SILENT AIM =====
+local silentAimActive = false
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.R and Aimbot.SilentAim then silentAimActive = true end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.R then silentAimActive = false end
+end)
+
+local oldNamecall = nil
+local function hookFire()
+    if oldNamecall then return end
+    local mt = getrawmetatable(game); local old = mt.__namecall; oldNamecall = old; setreadonly(mt, false)
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod(); local args = {...}
+        if (method == "FireServer" or method == "InvokeServer") and #args > 0 and typeof(args[1]) == "Vector3" then
+            if AimbotFOV.Enabled then 
+                local target = getTargetInFOV()
+                if target then return old(self, target.Position) end 
+            end
+            if Aimbot.SilentAim and silentAimActive then 
+                local murderer = getMurderer()
+                if murderer then return old(self, murderer.Position) end 
+            end
+        end
+        return old(self, ...)
+    end); setreadonly(mt, true)
+end
+
+local function unhookFire()
+    if oldNamecall then local mt = getrawmetatable(game); setreadonly(mt, false); mt.__namecall = oldNamecall; setreadonly(mt, true); oldNamecall = nil end
+end
+
+-- ===== КНОПКА LOCK =====
+local LockFrame = nil; local LockGui = nil
+local function createLockButton()
+    if LockGui then LockGui:Destroy() end
+    LockGui = Instance.new("ScreenGui", playerGui)
+    LockGui.Name = "MM2_Custom_Lock"; LockGui.ResetOnSpawn = false
+    
+    LockFrame = Instance.new("Frame", LockGui)
+    LockFrame.Size = UDim2.new(0, 75, 0, 75); LockFrame.Position = UDim2.new(0.80, 0, 0.40, 0)
+    LockFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25); LockFrame.BackgroundTransparency = 0.2
+    LockFrame.Active = true; LockFrame.Draggable = true; LockFrame.Visible = MainExtras.ShiftLock
+    Instance.new("UICorner", LockFrame).CornerRadius = UDim.new(0, 18)
+    local stroke = Instance.new("UIStroke", LockFrame); stroke.Color = Color3.fromRGB(130, 130, 130); stroke.Thickness = 1.5; stroke.Transparency = 0.4
+    
+    local LockTrigger = Instance.new("TextButton", LockFrame)
+    LockTrigger.Size = UDim2.new(1, 0, 1, 0); LockTrigger.BackgroundTransparency = 1; LockTrigger.Text = ""; LockTrigger.ZIndex = 100
+    LockTrigger.MouseButton1Click:Connect(function()
+        MainExtras.ShiftLock = not MainExtras.ShiftLock
+        if MainExtras.ShiftLock then enableShiftLock() else disableShiftLock() end
+        LockFrame.Visible = MainExtras.ShiftLock
+        showNotification(MainExtras.ShiftLock and "Shift Lock: ВКЛ" or "Shift Lock: ВЫКЛ", MainExtras.ShiftLock and "🔒" or "🔓")
+    end)
+    
+    local IconContainer = Instance.new("Frame", LockFrame)
+    IconContainer.Size = UDim2.new(0, 32, 0, 32); IconContainer.Position = UDim2.new(0.5, 0, 0.42, 0)
+    IconContainer.AnchorPoint = Vector2.new(0.5, 0.5); IconContainer.BackgroundTransparency = 1
+    
+    local ShackleBg = Instance.new("Frame", IconContainer)
+    ShackleBg.Size = UDim2.new(0, 26, 0, 20); ShackleBg.Position = UDim2.new(0.5, 0, 0.25, 0)
+    ShackleBg.AnchorPoint = Vector2.new(0.5, 0.5); ShackleBg.BackgroundColor3 = Color3.fromRGB(255, 255, 255); ShackleBg.BorderSizePixel = 0; ShackleBg.ZIndex = 2
+    Instance.new("UICorner", ShackleBg).CornerRadius = UDim.new(1, 0)
+    
+    local Shackle = Instance.new("Frame", IconContainer)
+    Shackle.Size = UDim2.new(0, 20, 0, 16); Shackle.Position = UDim2.new(0.5, 0, 0.25, 0)
+    Shackle.AnchorPoint = Vector2.new(0.5, 0.5); Shackle.BackgroundColor3 = Color3.fromRGB(25, 25, 25); Shackle.BorderSizePixel = 0; Shackle.ZIndex = 3
+    Instance.new("UICorner", Shackle).CornerRadius = UDim.new(1, 0)
+    
+    local LockBody = Instance.new("Frame", IconContainer)
+    LockBody.Size = UDim2.new(0, 28, 0, 18); LockBody.Position = UDim2.new(0.5, 0, 0.7, 0)
+    LockBody.AnchorPoint = Vector2.new(0.5, 0.5); LockBody.BackgroundColor3 = Color3.fromRGB(255, 255, 255); LockBody.BorderSizePixel = 0; LockBody.ZIndex = 4
+    Instance.new("UICorner", LockBody).CornerRadius = UDim.new(0, 4)
+    
+    local Keyhole = Instance.new("Frame", LockBody)
+    Keyhole.Size = UDim2.new(0, 4, 0, 6); Keyhole.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Keyhole.AnchorPoint = Vector2.new(0.5, 0.5); Keyhole.BackgroundColor3 = Color3.fromRGB(25, 25, 25); Keyhole.BorderSizePixel = 0; Keyhole.ZIndex = 5
+    Instance.new("UICorner", Keyhole).CornerRadius = UDim.new(1, 0)
+    
+    local LockText = Instance.new("TextLabel", LockFrame)
+    LockText.Size = UDim2.new(1, 0, 0, 12); LockText.Position = UDim2.new(0, 0, 0.78, 0)
+    LockText.BackgroundTransparency = 1; LockText.Text = "LOCK"; LockText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LockText.Font = Enum.Font.GothamBold; LockText.TextSize = 10
+    
+    return LockFrame
+end
+local lockButtonFrame = createLockButton()
+
+-- ===== SHIFT LOCK =====
+local cameraConnection = nil
+local function enableShiftLock()
+    if cameraConnection then cameraConnection:Disconnect() end
+    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    cameraConnection = RunService.RenderStepped:Connect(function()
+        if UserInputService.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+            UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        end
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if hrp and humanoid and humanoid.Health > 0 then
+            humanoid.AutoRotate = false
+            local camLook = camera.CFrame.LookVector
+            local targetAngle = math.atan2(-camLook.X, -camLook.Z)
+            hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, targetAngle, 0)
+        end
+    end)
+end
+
+local function disableShiftLock()
+    if cameraConnection then 
+        cameraConnection:Disconnect()
+        cameraConnection = nil 
+    end
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    local char = player.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if humanoid then humanoid.AutoRotate = true end
+end
+
+local function toggleShiftLock(v)
+    MainExtras.ShiftLock = v
+    if lockButtonFrame then lockButtonFrame.Visible = v end
+    if v then enableShiftLock() else disableShiftLock() end
+end
+
+-- ===== ДИНАМИЧЕСКАЯ КНОПКА ДЕЙСТВИЯ =====
+local ActionButton = nil; local ActionGui = nil
+local function createActionButton()
+    if playerGui:FindFirstChild("DynamicActionButton") then playerGui.DynamicActionButton:Destroy() end
+    ActionGui = Instance.new("ScreenGui", playerGui)
+    ActionGui.Name = "DynamicActionButton"; ActionGui.ResetOnSpawn = false
+    
+    ActionButton = Instance.new("TextButton", ActionGui)
+    ActionButton.Size = UDim2.new(0, 75, 0, 75); ActionButton.Position = UDim2.new(0.80, 0, 0.55, 0)
+    ActionButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0); ActionButton.BackgroundTransparency = 0.5
+    ActionButton.Text = ""; ActionButton.Active = true; ActionButton.Draggable = true
+    ActionButton.AutoButtonColor = false; ActionButton.ZIndex = 100
+    Instance.new("UICorner", ActionButton).CornerRadius = UDim.new(0, 18)
+    
+    local IconContainer = Instance.new("Frame", ActionButton)
+    IconContainer.Size = UDim2.new(0, 44, 0, 44)
+    IconContainer.Position = UDim2.new(0.5, 0, 0.44, 0); IconContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+    IconContainer.BackgroundTransparency = 1; IconContainer.Name = "IconContainer"; IconContainer.ZIndex = 101
+    
+    local ActionText = Instance.new("TextLabel", ActionButton)
+    ActionText.Size = UDim2.new(1, 0, 0, 15); ActionText.Position = UDim2.new(0, 0, 0.74, 0)
+    ActionText.BackgroundTransparency = 1; ActionText.Text = "..."; ActionText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ActionText.Font = Enum.Font.GothamBold; ActionText.TextSize = 10; ActionText.Name = "ActionText"; ActionText.ZIndex = 101
+    
+    ActionButton.Visible = false
+    return ActionButton, IconContainer, ActionText
+end
+local actionButtonFrame, actionIcon, actionText = createActionButton()
+
+local function createKnifeIcon(parent)
+    for _, child in ipairs(parent:GetChildren()) do child:Destroy() end
+    local knifeContainer = Instance.new("Frame", parent)
+    knifeContainer.Size = UDim2.new(1, 0, 1, 0); knifeContainer.BackgroundTransparency = 1; knifeContainer.Name = "KnifeIcon"
+    local handle = Instance.new("Frame", knifeContainer)
+    handle.Size = UDim2.new(0, 6, 0, 18); handle.Position = UDim2.new(0.5, -3, 0.5, 2)
+    handle.BackgroundColor3 = Color3.fromRGB(255, 255, 255); handle.BorderSizePixel = 0
+    Instance.new("UICorner", handle).CornerRadius = UDim.new(0, 3)
+    local blade = Instance.new("Frame", knifeContainer)
+    blade.Size = UDim2.new(0, 6, 0, 16); blade.Position = UDim2.new(0.5, -3, 0.5, -16)
+    blade.BackgroundColor3 = Color3.fromRGB(255, 255, 255); blade.BorderSizePixel = 0
+    Instance.new("UICorner", blade).CornerRadius = UDim.new(0, 2)
+    local tip = Instance.new("Frame", knifeContainer)
+    tip.Size = UDim2.new(0, 6, 0, 6); tip.Position = UDim2.new(0.5, -3, 0.5, -20)
+    tip.BackgroundColor3 = Color3.fromRGB(255, 255, 255); tip.BorderSizePixel = 0; tip.Rotation = 45
+    return knifeContainer
+end
+
+local function createShootIcon(parent)
+    for _, child in ipairs(parent:GetChildren()) do child:Destroy() end
+    local shootContainer = Instance.new("Frame", parent)
+    shootContainer.Size = UDim2.new(1, 0, 1, 0); shootContainer.BackgroundTransparency = 1; shootContainer.Name = "ShootIcon"
+    local GAP = 5; local LENGTH = 8; local THICKNESS = 2
+    local function createStaticLine(isVertical, directionMultiplier)
+        local line = Instance.new("Frame", shootContainer)
+        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255); line.BorderSizePixel = 0; line.AnchorPoint = Vector2.new(0.5, 0.5)
+        if isVertical then line.Size = UDim2.new(0, THICKNESS, 0, LENGTH); line.Position = UDim2.new(0.5, 0, 0.5, (GAP + LENGTH/2) * directionMultiplier)
+        else line.Size = UDim2.new(0, LENGTH, 0, THICKNESS); line.Position = UDim2.new(0.5, (GAP + LENGTH/2) * directionMultiplier, 0.5, 0) end
+    end
+    createStaticLine(true, -1); createStaticLine(true, 1); createStaticLine(false, -1); createStaticLine(false, 1)
+    return shootContainer
+end
+
+local function updateActionButtonVisibility()
+    if not actionButtonFrame then return end
+    if not Aimbot.FireButtonEnabled or (not Aimbot.SilentAim and not AimbotFOV.Enabled) then
+        actionButtonFrame.Visible = false
+        return
+    end
+    local myRole = getMyRole()
+    local hasGun = hasWeapon()
+    local hasKnifeBool = hasKnife()
+    if myRole == "Murderer" and hasKnifeBool then
+        createKnifeIcon(actionIcon)
+        actionText.Text = "KNIFE"
+        actionButtonFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    elseif hasGun then
+        createShootIcon(actionIcon)
+        actionText.Text = "SHOOT"
+        actionButtonFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    else
+        actionButtonFrame.Visible = false
+        return
+    end
+    actionButtonFrame.Visible = true
+end
+
+local function performKnifeAttack()
+    local myChar = player.Character
+    if not myChar then return end
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    
+    local targets = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local theirHRP = p.Character:FindFirstChild("HumanoidRootPart")
+            local theirHumanoid = p.Character:FindFirstChild("Humanoid")
+            if theirHRP and theirHumanoid and theirHumanoid.Health > 0 then
+                local dist = (theirHRP.Position - myHRP.Position).Magnitude
+                if dist <= KNIFE_RANGE then
+                    table.insert(targets, {Player = p, Humanoid = theirHumanoid, Distance = dist, Name = p.Name})
+                end
+            end
+        end
+    end
+    
+    table.sort(targets, function(a, b) return a.Distance < b.Distance end)
+    
+    if #targets == 0 then
+        TweenService:Create(actionButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, true), {BackgroundColor3 = Color3.fromRGB(50, 50, 0)}):Play()
+        task.wait(0.1)
+        TweenService:Create(actionButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+        showNotification("Нет целей в радиусе!", "⚠")
+        return
+    end
+    
+    TweenService:Create(actionButtonFrame, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, true), {Size = UDim2.new(0, 65, 0, 65)}):Play()
+    task.wait(0.05)
+    TweenService:Create(actionButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 75, 0, 75)}):Play()
+    
+    local killedCount = 0
+    for _, target in ipairs(targets) do
+        if target.Humanoid and target.Humanoid.Health > 0 then
+            target.Humanoid.Health = 0
+            killedCount = killedCount + 1
+        end
+        local knife = myChar:FindFirstChild("Knife") or (player.Backpack and player.Backpack:FindFirstChild("Knife"))
+        if knife then
+            local attackRemote = knife:FindFirstChild("RemoteEvent") or knife:FindFirstChild("Stab") or knife:FindFirstChild("Attack")
+            if attackRemote then pcall(function() attackRemote:FireServer(target.Player.Character) end) end
+        end
+    end
+    
+    if killedCount > 0 then notifyKnifeKill(killedCount) end
+    
+    TweenService:Create(actionButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(0, 100, 0)}):Play()
+    task.wait(0.15)
+    TweenService:Create(actionButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+end
+
+local function performShoot()
+    local char = player.Character; if not char then return end
+    local gun = char:FindFirstChild("Gun") or (player.Backpack and player.Backpack:FindFirstChild("Gun"))
+    if not gun then showNotification("Нет оружия!", "⚠"); return end
+    
+    local targetPart = nil; local targetName = "неизвестный"
+    
+    if AimbotFOV.Enabled then 
+        local head = getTargetInFOV()
+        if head then targetPart = head; local tp = Players:GetPlayerFromCharacter(head.Parent); if tp then targetName = tp.Name end end
+    end
+    
+    if not targetPart and Aimbot.SilentAim then 
+        local murderer = getMurderer()
+        if murderer then targetPart = murderer; local tp = Players:GetPlayerFromCharacter(murderer.Parent); if tp then targetName = tp.Name end end
+    end
+    
+    if not targetPart then showNotification("Убийца не найден!", "⚠"); return end
+    
+    if gun.Parent == player.Backpack then char.Humanoid:EquipTool(gun); task.wait(0.08) end
+    
+    local shootRemote = gun:FindFirstChild("Normal") or gun:FindFirstChild("Shoot") or gun:FindFirstChildOfClass("RemoteEvent")
+    if shootRemote and shootRemote:IsA("RemoteEvent") then 
+        shootRemote:FireServer(targetPart.Position)
+        notifyShootKill(targetName)
+    else 
+        gun:Activate()
+        notifyShootKill(targetName)
+    end
+    
+    TweenService:Create(actionButtonFrame, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, true), {Size = UDim2.new(0, 65, 0, 65)}):Play()
+    task.wait(0.08)
+    TweenService:Create(actionButtonFrame, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, 75, 0, 75)}):Play()
+end
+
+actionButtonFrame.MouseButton1Click:Connect(function()
+    local myRole = getMyRole()
+    local hasGun = hasWeapon()
+    local hasKnifeBool = hasKnife()
+    if myRole == "Murderer" and hasKnifeBool then performKnifeAttack()
+    elseif hasGun then performShoot() end
+end)
+
+-- ===== СЛАЙДЕР ДИСТАНЦИИ НОЖА =====
+local KnifeSliderGui = nil
+local function createKnifeSlider()
+    if playerGui:FindFirstChild("KnifeSlider") then playerGui.KnifeSlider:Destroy() end
+    KnifeSliderGui = Instance.new("ScreenGui", playerGui)
+    KnifeSliderGui.Name = "KnifeSlider"; KnifeSliderGui.ResetOnSpawn = false
+    local sliderFrame = Instance.new("Frame", KnifeSliderGui)
+    sliderFrame.Size = UDim2.new(0, 200, 0, 45); sliderFrame.Position = UDim2.new(0.5, -100, 0.85, 0)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0); sliderFrame.BackgroundTransparency = 0.4
+    sliderFrame.BorderSizePixel = 0; sliderFrame.Visible = false; sliderFrame.Name = "SliderFrame"
+    Instance.new("UICorner", sliderFrame).CornerRadius = UDim.new(0, 10)
+    local sliderTitle = Instance.new("TextLabel", sliderFrame)
+    sliderTitle.Size = UDim2.new(1, 0, 0, 14); sliderTitle.Position = UDim2.new(0, 0, 0, 4)
+    sliderTitle.Text = "KNIFE RANGE: " .. KNIFE_RANGE; sliderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderTitle.BackgroundTransparency = 1; sliderTitle.Font = Enum.Font.GothamBold; sliderTitle.TextSize = 9; sliderTitle.Name = "SliderTitle"
+    local sliderBar = Instance.new("Frame", sliderFrame)
+    sliderBar.Size = UDim2.new(0.8, 0, 0, 4); sliderBar.Position = UDim2.new(0.1, 0, 0, 26)
+    sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40); sliderBar.BorderSizePixel = 0; sliderBar.Name = "SliderBar"
+    Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(1, 0)
+    local sliderFill = Instance.new("Frame", sliderBar)
+    sliderFill.Size = UDim2.new(KNIFE_RANGE / 50, 0, 1, 0); sliderFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    sliderFill.BorderSizePixel = 0; sliderFill.Name = "SliderFill"
+    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
+    local sliderKnob = Instance.new("Frame", sliderBar)
+    sliderKnob.Size = UDim2.new(0, 12, 0, 12); sliderKnob.Position = UDim2.new(KNIFE_RANGE / 50, -6, 0, -4)
+    sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255); sliderKnob.BorderSizePixel = 0; sliderKnob.Name = "SliderKnob"
+    Instance.new("UICorner", sliderKnob).CornerRadius = UDim.new(1, 0)
+    local dragging = false
+    local function updateSlider(value)
+        local ratio = value / 50
+        sliderFill.Size = UDim2.new(ratio, 0, 1, 0)
+        sliderKnob.Position = UDim2.new(ratio, -6, 0, -4)
+        sliderTitle.Text = "KNIFE RANGE: " .. value
+    end
+    sliderKnob.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            local mousePos = UserInputService:GetMouseLocation()
+            local barAbsPos = sliderBar.AbsolutePosition; local barSize = sliderBar.AbsoluteSize
+            local relativeX = math.clamp((mousePos.X - barAbsPos.X) / barSize.X, 0, 1)
+            KNIFE_RANGE = math.floor(relativeX * 50); if KNIFE_RANGE < 1 then KNIFE_RANGE = 1 end
+            updateSlider(KNIFE_RANGE)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local barAbsPos = sliderBar.AbsolutePosition; local barSize = sliderBar.AbsoluteSize
+            local relativeX = math.clamp((input.Position.X - barAbsPos.X) / barSize.X, 0, 1)
+            KNIFE_RANGE = math.floor(relativeX * 50); if KNIFE_RANGE < 1 then KNIFE_RANGE = 1 end
+            updateSlider(KNIFE_RANGE)
+        end
+    end)
+    return sliderFrame
+end
+local knifeSliderFrame = createKnifeSlider()
+
+actionButtonFrame.MouseButton2Click:Connect(function()
+    if getMyRole() == "Murderer" and hasKnife() then
+        knifeSliderFrame.Visible = not knifeSliderFrame.Visible
+    end
+end)
+
+-- ===== ВИЗУАЛ ЭФФЕКТЫ (БЕЗ ПОДСВЕТКИ ТРУПОВ) =====
+local secureContainer = CoreGui:FindFirstChild("SecureVisuals")
+if not secureContainer then secureContainer = Instance.new("Folder"); secureContainer.Name = "SecureVisuals"; secureContainer.Parent = CoreGui end
+
+local orbContainer, orbitConnection, highlight = nil, nil, nil
+local ORBIT_RADIUS = 4.5; local ORBIT_SPEED = 4
+
+local function getOrbColor()
+    if VisualEffects.OrbColor == "White" then return Color3.fromRGB(255, 255, 255)
+    elseif VisualEffects.OrbColor == "Red" then return Color3.fromRGB(255, 50, 50)
+    elseif VisualEffects.OrbColor == "Blue" then return Color3.fromRGB(0, 150, 255)
+    elseif VisualEffects.OrbColor == "Purple" then return Color3.fromRGB(180, 0, 255) end
+    return Color3.fromRGB(255, 255, 255)
+end
+
+local MAX_PARTICLES = 180; local SPAWN_RADIUS = 50; local BASE_SIZE = 0.45
+local LIGHT_BRIGHTNESS = 2; local LIGHT_RANGE = 5; local PULSE_SPEED = 8
+if _G.GlobalParticleContainer then _G.GlobalParticleContainer:Destroy() end
+local particleContainer = Instance.new("Folder"); particleContainer.Name = "SecureGlobalSunParticles"; particleContainer.Parent = camera
+_G.GlobalParticleContainer = particleContainer
+local particles = {}; local lastSpawn = 0
+
+local function getParticleColor()
+    if VisualEffects.ParticleColor == "White" then return Color3.fromRGB(255, 255, 255)
+    elseif VisualEffects.ParticleColor == "Red" then return Color3.fromRGB(255, 50, 50)
+    elseif VisualEffects.ParticleColor == "Purple" then return Color3.fromRGB(180, 0, 255)
+    elseif VisualEffects.ParticleColor == "Cyan" then return Color3.fromRGB(0, 255, 255)
+    elseif VisualEffects.ParticleColor == "Blue" then return Color3.fromRGB(0, 150, 255) end
+    return Color3.fromRGB(255, 255, 255)
+end
+
+local function spawnSunParticle(centerPosition)
+    if not VisualEffects.FloatingParticles then return end
+    local color = getParticleColor()
+    local randomOffset = Vector3.new(math.random(-SPAWN_RADIUS, SPAWN_RADIUS), math.random(-5, 25), math.random(-SPAWN_RADIUS, SPAWN_RADIUS))
+    local p = Instance.new("Part"); p.Name = "RadiantSunDust"; p.Shape = Enum.PartType.Ball
+    p.Size = Vector3.new(BASE_SIZE, BASE_SIZE, BASE_SIZE); p.Color = color; p.Material = Enum.Material.Neon
+    p.Anchored = true; p.CanCollide = false; p.Transparency = 0.1; p.Parent = particleContainer
+    local light = Instance.new("PointLight"); light.Color = color; light.Brightness = LIGHT_BRIGHTNESS; light.Range = LIGHT_RANGE; light.Shadows = false; light.Enabled = true; light.Parent = p
+    local hl = Instance.new("Highlight"); hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; hl.FillColor = color; hl.OutlineColor = Color3.fromRGB(255, 255, 255); hl.OutlineTransparency = 0.4; hl.Adornee = p; hl.Parent = particleContainer
+    local velocity = Vector3.new(math.random(-15, 15) / 10, math.random(-5, 15) / 10, math.random(-15, 15) / 10)
+    table.insert(particles, {Instance = p, Highlight = hl, Light = light, Position = centerPosition + randomOffset, Velocity = velocity, Age = 0, MaxAge = math.random(50, 90) / 10, Seed = math.random(1, 1000)})
+end
+
+if _G.ParticleRenderLoop then _G.ParticleRenderLoop:Disconnect() end
+_G.ParticleRenderLoop = RunService.RenderStepped:Connect(function(dt)
+    local character = player.Character; if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    local currentPos = hrp.Position; local currentTime = tick()
+    if VisualEffects.FloatingParticles and currentTime - lastSpawn > 0.02 and #particles < MAX_PARTICLES then lastSpawn = currentTime; spawnSunParticle(currentPos) end
+    for i = #particles, 1, -1 do
+        local p = particles[i]; p.Age = p.Age + dt
+        local distance = (p.Position - currentPos).Magnitude
+        if p.Age >= p.MaxAge or distance > (SPAWN_RADIUS * 1.5) then p.Instance:Destroy(); p.Highlight:Destroy(); table.remove(particles, i)
+        else
+            local waveX = math.sin(currentTime + p.Seed) * 0.15; local waveY = math.cos(currentTime * 0.4 + p.Seed) * 0.05; local waveZ = math.cos(currentTime + p.Seed) * 0.15
+            p.Position = p.Position + (p.Velocity * dt * 6) + Vector3.new(waveX, waveY, waveZ); p.Instance.Position = p.Position
+            local pulseWave = math.sin(currentTime * PULSE_SPEED + p.Seed); local currentPulseSize = BASE_SIZE + (pulseWave * 0.15)
+            p.Instance.Size = Vector3.new(currentPulseSize, currentPulseSize, currentPulseSize)
+            p.Light.Brightness = LIGHT_BRIGHTNESS + (pulseWave * (LIGHT_BRIGHTNESS * 0.4))
+            local progress = p.Age / p.MaxAge
+            if progress > 0.8 then local fade = (1 - progress) / 0.2; p.Instance.Transparency = 0.1 + (1 - fade) * 0.9; p.Light.Brightness = p.Light.Brightness * fade end
+        end
+    end
+    if VisualEffects.FloatingParticles then
+        local color = getParticleColor()
+        for _, p in ipairs(particles) do p.Instance.Color = color; p.Light.Color = color; p.Highlight.FillColor = color end
+    end
+end)
+
+local function clearEffects()
+    if orbitConnection then orbitConnection:Disconnect(); orbitConnection = nil end
+    if orbContainer then orbContainer:Destroy(); orbContainer = nil end
+    if highlight then highlight:Destroy(); highlight = nil end
+end
+
+local function applyEffects(character)
+    clearEffects()
+    if not character then return end
+    local hrp = character:WaitForChild("HumanoidRootPart", 10); local humanoid = character:WaitForChild("Humanoid", 10)
+    if not hrp or not humanoid then return end
+    
+    if humanoid.Health <= 0 then return end
+    
+    if VisualEffects.GlowBody then
+        highlight = Instance.new("Highlight"); highlight.Name = "AdminGlow"; highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.FillColor = getOrbColor(); highlight.FillTransparency = 0.45; highlight.OutlineColor = Color3.fromRGB(255, 255, 255); highlight.OutlineTransparency = 0
+        highlight.Adornee = character; highlight.Parent = secureContainer
+    end
+    if VisualEffects.OrbitOrbs then
+        orbContainer = Instance.new("Model"); orbContainer.Name = "OrbContainer"; orbContainer.Parent = camera
+        local function createOrb()
+            local orb = Instance.new("Part"); orb.Shape = Enum.PartType.Ball; orb.Size = Vector3.new(1.2, 1.2, 1.2); orb.Color = getOrbColor(); orb.Material = Enum.Material.Neon
+            orb.Anchored = true; orb.CanCollide = false; orb.Parent = orbContainer
+            local hl = Instance.new("Highlight"); hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; hl.FillColor = getOrbColor(); hl.OutlineColor = Color3.fromRGB(255, 255, 255); hl.Adornee = orb; hl.Parent = secureContainer
+            local trail = Instance.new("ParticleEmitter"); trail.Color = ColorSequence.new(getOrbColor()); trail.Size = NumberSequence.new(0.6, 0); trail.Lifetime = NumberRange.new(0.4); trail.Rate = 50; trail.Speed = NumberRange.new(0); trail.LightEmission = 1; trail.Texture = "rbxassetid://241370211"; trail.Parent = orb
+            return orb
+        end
+        local orb1 = createOrb(); local orb2 = createOrb()
+        orbitConnection = RunService.Heartbeat:Connect(function()
+            if not hrp or not hrp.Parent then clearEffects(); return end
+            if humanoid.Health <= 0 then clearEffects(); return end
+            local time = tick() * ORBIT_SPEED; local centerPos = hrp.Position
+            local pulseSize = 1.0 + math.sin(time * 2) * 0.25; local sizeVec = Vector3.new(pulseSize, pulseSize, pulseSize); orb1.Size = sizeVec; orb2.Size = sizeVec
+            orb1.Position = Vector3.new(centerPos.X + math.cos(time) * ORBIT_RADIUS, centerPos.Y + math.sin(time * 2) * 0.5, centerPos.Z + math.sin(time) * ORBIT_RADIUS)
+            orb2.Position = Vector3.new(centerPos.X + math.cos(time + math.pi) * ORBIT_RADIUS, centerPos.Y + math.sin(time * 2 + math.pi) * 0.5, centerPos.Z + math.sin(time + math.pi) * ORBIT_RADIUS)
+            orb1.Color = getOrbColor(); orb2.Color = getOrbColor()
+        end)
+    end
+    
+    humanoid.Died:Connect(function()
+        clearEffects()
+        if highlight then highlight:Destroy(); highlight = nil end
+    end)
+end
+
+player.CharacterAdded:Connect(applyEffects)
+if player.Character then applyEffects(player.Character) end
+
+-- ===== ESP (БЕЗ ТРУПОВ) =====
+local ESPObjects, PlayerChams = {}, {}
+local function createESP(plr) local bf = Drawing.new("Square"); bf.Visible = false; bf.Filled = true; bf.Color = Color3.fromRGB(255,255,255); bf.Transparency = 0.75; local bo = Drawing.new("Square"); bo.Visible = false; bo.Thickness = 1.5; bo.Filled = false; local bx = Drawing.new("Square"); bx.Visible = false; bx.Thickness = 0.8; bx.Filled = false; local tr = Drawing.new("Line"); tr.Visible = false; tr.Thickness = 0.8; local tx = Drawing.new("Text"); tx.Visible = false; tx.Size = 12; tx.Center = true; return {boxFill=bf, boxOutline=bo, box=bx, tracer=tr, text=tx} end
+local function updateESP()
+    for plr, e in pairs(ESPObjects) do if not plr or not plr.Parent then pcall(function() e.boxFill:Remove(); e.boxOutline:Remove(); e.box:Remove(); e.tracer:Remove(); e.text:Remove() end); ESPObjects[plr] = nil else pcall(function() e.boxFill.Visible = false; e.boxOutline.Visible = false; e.box.Visible = false; e.tracer.Visible = false; e.text.Visible = false end) end end
+    if not ESP.Enabled then return end
+    local lc = player.Character; if not lc then return end; local lr = lc:FindFirstChild("HumanoidRootPart"); if not lr then return end
+    for plr, e in pairs(ESPObjects) do 
+        if plr == player then continue end
+        if not plr or not plr.Parent then continue end
+        local c = plr.Character; if not c then continue end
+        local hum = c:FindFirstChild("Humanoid")
+        if hum and hum.Health <= 0 then continue end -- ПРОПУСКАЕМ ТРУПЫ
+        
+        local h = c:FindFirstChild("Head"); local r = c:FindFirstChild("HumanoidRootPart")
+        if not h or not r then continue end; local d = (r.Position - lr.Position).Magnitude; if d > 500 then continue end
+        if ESP.Box then local h3 = h.Position + Vector3.new(0,0.5,0); local f3 = r.Position - Vector3.new(0,3,0); local hS2, hV2 = camera:WorldToViewportPoint(h3); local fS2, fV2 = camera:WorldToViewportPoint(f3); if hV2 and fV2 then local bh = math.abs(hS2.Y - fS2.Y); local bw = bh * 0.35; if bh < 10 then bh = 10; bw = 4 end; if bh > 300 then bh = 300; bw = 105 end; local bx = fS2.X - bw/2; local by = hS2.Y; pcall(function() e.boxFill.Position = Vector2.new(bx,by); e.boxFill.Size = Vector2.new(bw,bh); e.boxFill.Color = SelectedColor; e.boxFill.Visible = true; e.boxOutline.Position = Vector2.new(bx,by); e.boxOutline.Size = Vector2.new(bw,bh); e.boxOutline.Visible = true; e.box.Position = Vector2.new(bx,by); e.box.Size = Vector2.new(bw,bh); e.box.Color = SelectedColor; e.box.Visible = true end) end end
+        local f2, onScreen = camera:WorldToViewportPoint(r.Position - Vector3.new(0,3,0)); local h2 = camera:WorldToViewportPoint(h.Position + Vector3.new(0,0.5,0))
+        if ESP.Tracer and onScreen then pcall(function() e.tracer.From = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y); e.tracer.To = Vector2.new(f2.X, f2.Y); e.tracer.Color = SelectedColor; e.tracer.Visible = true end) end
+        if ESP.Name or ESP.Distance then local txt = ""; if ESP.Name then txt = plr.Name end; if ESP.Distance then txt = txt .. " [" .. math.floor(d) .. "m]" end; pcall(function() e.text.Text = txt; e.text.Position = Vector2.new(f2.X, h2.Y-20); e.text.Color = SelectedColor; e.text.Visible = true end) end
+    end
+end
+local function addESP(plr) if plr == player or ESPObjects[plr] then return end; ESPObjects[plr] = createESP(plr) end
+local function removeESP(plr) if ESPObjects[plr] then pcall(function() ESPObjects[plr].boxFill:Remove(); ESPObjects[plr].boxOutline:Remove(); ESPObjects[plr].box:Remove(); ESPObjects[plr].tracer:Remove(); ESPObjects[plr].text:Remove() end); ESPObjects[plr] = nil end end
+for _, p in pairs(Players:GetPlayers()) do if p ~= player then addESP(p) end end
+Players.PlayerAdded:Connect(function(p) if p ~= player then addESP(p) end end)
+Players.PlayerRemoving:Connect(function(p) removeESP(p) end)
+
+-- ===== ЧАМСЫ (БЕЗ ТРУПОВ) =====
+local function createCham(plr) if PlayerChams[plr] then return end; local hl = Instance.new("Highlight"); hl.FillTransparency = 0.4; hl.OutlineTransparency = 0.2; hl.OutlineColor = Color3.fromRGB(255, 255, 255); hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; hl.Enabled = false; PlayerChams[plr] = hl end
+local function updateChams() 
+    for plr, hl in pairs(PlayerChams) do 
+        if not plr.Parent or not plr.Character then hl.Enabled = false 
+        else 
+            if not ESP.Chams then hl.Enabled = false; hl.Parent = nil; continue end
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum and hum.Health <= 0 then hl.Enabled = false; hl.Parent = nil; continue end -- ПРОПУСКАЕМ ТРУПЫ
+            
+            hl.Parent = plr.Character
+            local role = getPlayerRole(plr)
+            hl.FillColor = role == "Murderer" and Color3.fromRGB(255, 0, 0) or (role == "Sheriff" and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(0, 255, 100))
+            hl.Enabled = true 
+        end 
+    end 
+end
+for _, p in pairs(Players:GetPlayers()) do if p ~= player then createCham(p) end end
+Players.PlayerAdded:Connect(function(p) if p ~= player then createCham(p) end end)
+Players.PlayerRemoving:Connect(function(p) if PlayerChams[p] then PlayerChams[p]:Destroy(); PlayerChams[p] = nil end end)
+
+-- ===== BHOP =====
+local bunnyHopConnection = nil
+local function toggleBunnyHop(v) MainExtras.BunnyHop = v; if v then if bunnyHopConnection then bunnyHopConnection:Disconnect() end; bunnyHopConnection = RunService.Heartbeat:Connect(function() if not MainExtras.BunnyHop then return end; local char = player.Character; if not char then return end; local humanoid = char:FindFirstChild("Humanoid"); local root = char:FindFirstChild("HumanoidRootPart"); if not humanoid or not root or humanoid.FloorMaterial == Enum.Material.Air then return end; local moveDir = humanoid.MoveDirection; if moveDir.Magnitude < 0.1 then return end; local hSpeed = Vector3.new(root.Velocity.X, 0, root.Velocity.Z).Magnitude; humanoid.Jump = true; if hSpeed > 5 then local dirH = Vector3.new(moveDir.X, 0, moveDir.Z).Unit; root.Velocity = Vector3.new(dirH.X * math.min(hSpeed * MovementSettings.BunnyHopSpeed, MovementSettings.BunnyHopMaxSpeed), root.Velocity.Y, dirH.Z * math.min(hSpeed * MovementSettings.BunnyHopSpeed, MovementSettings.BunnyHopMaxSpeed)) end end) else if bunnyHopConnection then bunnyHopConnection:Disconnect(); bunnyHopConnection = nil end end end
+
+-- ===== ФЛАЙ =====
+local flyConnection = nil
+local function setFly(v) Rage.Fly = v; local char = player.Character; if not char then return end; local root = char:FindFirstChild("HumanoidRootPart"); local humanoid = char:FindFirstChild("Humanoid"); if not root or not humanoid then return end; if v then humanoid.PlatformStand = true; for _, obj in pairs(root:GetChildren()) do if obj:IsA("BodyVelocity") or obj:IsA("BodyGyro") then obj:Destroy() end end; local bv = Instance.new("BodyVelocity"); bv.MaxForce = Vector3.new(400000, 400000, 400000); bv.Velocity = Vector3.zero; bv.Parent = root; local bg = Instance.new("BodyGyro"); bg.MaxTorque = Vector3.new(400000, 400000, 400000); bg.CFrame = root.CFrame; bg.Parent = root; if flyConnection then flyConnection:Disconnect() end; flyConnection = RunService.Heartbeat:Connect(function() if not Rage.Fly then return end; local char = player.Character; if not char then return end; local root = char:FindFirstChild("HumanoidRootPart"); if not root then return end; local moveDir = Vector3.zero; if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += camera.CFrame.LookVector end; if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= camera.CFrame.LookVector end; if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= camera.CFrame.RightVector end; if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += camera.CFrame.RightVector end; if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0, 1, 0) end; if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0, -1, 0) end; if moveDir.Magnitude > 0 then bv.Velocity = moveDir.Unit * MovementSettings.FlySpeed else bv.Velocity = Vector3.zero end; bg.CFrame = CFrame.lookAt(root.Position, root.Position + camera.CFrame.LookVector) end) else if flyConnection then flyConnection:Disconnect(); flyConnection = nil end; if humanoid then humanoid.PlatformStand = false end; if root then for _, obj in pairs(root:GetChildren()) do if obj:IsA("BodyVelocity") or obj:IsA("BodyGyro") then obj:Destroy() end end end end end
+
+-- ===== НОКЛИП =====
+local noclipConnection = nil
+local function toggleNoclip(v) 
+    Rage.Noclip = v
+    if v then 
+        if noclipConnection then noclipConnection:Disconnect() end
+        noclipConnection = RunService.Stepped:Connect(function() 
+            if not Rage.Noclip then return end
+            local char = player.Character
+            if char then 
+                for _, p in pairs(char:GetDescendants()) do 
+                    if p:IsA("BasePart") and p.CanCollide then 
+                        p.CanCollide = false 
+                    end 
+                end 
+            end 
+        end)
+        showNotification("Noclip: ВКЛ", "👻")
+    else 
+        if noclipConnection then 
+            noclipConnection:Disconnect()
+            noclipConnection = nil 
+        end
+        local char = player.Character
+        if char then 
+            for _, p in pairs(char:GetDescendants()) do 
+                if p:IsA("BasePart") then 
+                    p.CanCollide = true 
+                end 
+            end 
+        end
+        showNotification("Noclip: ВЫКЛ", "🚫")
+    end 
+end
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.N then
+        toggleNoclip(not Rage.Noclip)
+        if win.Visible then fillCat(1) end
+    end
+end)
+
+-- ===== КРУТИЛКА =====
+local spinbotConnection = nil
+local function toggleSpinbot(v) MainExtras.Spinbot = v; local spinTime = 0; if v then if spinbotConnection then spinbotConnection:Disconnect() end; spinbotConnection = RunService.Heartbeat:Connect(function(dt) if not MainExtras.Spinbot then return end; local char = player.Character; if not char then return end; local root = char:FindFirstChild("HumanoidRootPart"); if not root then return end; spinTime += dt; local speed = MovementSettings.SpinSpeed; if MovementSettings.SpinMode == "Ultra" then local us = speed * 3; local w = math.sin(spinTime*5)*15; root.CFrame *= CFrame.Angles(math.rad(w), math.rad(us), math.rad(w*0.5)) elseif MovementSettings.SpinMode == "Random" then local rx = math.sin(spinTime*7.3)*speed*2; local ry = speed*(1+math.cos(spinTime*3.7)*0.5); local rz = math.cos(spinTime*5.1)*speed*1.5; root.CFrame *= CFrame.Angles(math.rad(rx), math.rad(ry), math.rad(rz)) else root.CFrame *= CFrame.Angles(0, math.rad(speed), 0) end end) else if spinbotConnection then spinbotConnection:Disconnect(); spinbotConnection = nil end end end
+
+-- ===== ОБЩИЕ ФУНКЦИИ =====
+local function voidMurderer() local m = getMurderer(); if m and m.Parent then m.CFrame = CFrame.new(0,-1000,0) end end
+local function voidSheriff() for _, p in pairs(Players:GetPlayers()) do if p ~= player and p.Character and getPlayerRole(p) == "Sheriff" then p.Character.HumanoidRootPart.CFrame = CFrame.new(0,-1000,0); return end end end
+local function tpToMurderer() local m = getMurderer(); if m and m.Parent and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then player.Character.HumanoidRootPart.CFrame = m.CFrame + Vector3.new(0,5,0) end end
+local function tpToSheriff() for _, p in pairs(Players:GetPlayers()) do if p ~= player and p.Character and getPlayerRole(p) == "Sheriff" then player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0); return end end end
+local function tpToLobby() if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then player.Character.HumanoidRootPart.CFrame = CFrame.new(13.87, 503.41, -9.18) end end
+
+-- ===== KILL ALL =====
+local function killAll()
+    local myChar = player.Character
+    if not myChar then showNotification("Нет персонажа!", "⚠"); return end
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then showNotification("Нет HumanoidRootPart!", "⚠"); return end
+    
+    local myRole = getMyRole()
+    local killedCount = 0
+    local totalTargets = 0
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local theirHumanoid = p.Character:FindFirstChild("Humanoid")
+            if theirHumanoid and theirHumanoid.Health > 0 then totalTargets = totalTargets + 1 end
+        end
+    end
+    
+    if totalTargets == 0 then showNotification("Нет целей для убийства!", "⚠"); return end
+    
+    local originalPos = myHRP.CFrame
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            local theirHRP = p.Character:FindFirstChild("HumanoidRootPart")
+            local theirHumanoid = p.Character:FindFirstChild("Humanoid")
+            if theirHRP and theirHumanoid and theirHumanoid.Health > 0 then
+                local tpPos = theirHRP.CFrame + (theirHRP.CFrame.LookVector * 3) + Vector3.new(0, 2, 0)
+                
+                if myRole == "Murderer" then
+                    myHRP.CFrame = tpPos
+                    task.wait(0.03)
+                    local knife = myChar:FindFirstChild("Knife") or (player.Backpack and player.Backpack:FindFirstChild("Knife"))
+                    if knife then
+                        local attackRemote = knife:FindFirstChild("RemoteEvent") or knife:FindFirstChild("Stab") or knife:FindFirstChild("Attack")
+                        if attackRemote then pcall(function() attackRemote:FireServer(p.Character) end) end
+                    end
+                    theirHumanoid.Health = 0
+                    killedCount = killedCount + 1
+                    task.wait(0.05)
+                elseif hasWeapon() then
+                    myHRP.CFrame = tpPos
+                    task.wait(0.03)
+                    local gun = myChar:FindFirstChild("Gun") or (player.Backpack and player.Backpack:FindFirstChild("Gun"))
+                    if gun then
+                        local shootRemote = gun:FindFirstChild("Normal") or gun:FindFirstChild("Shoot") or gun:FindFirstChildOfClass("RemoteEvent")
+                        if shootRemote and shootRemote:IsA("RemoteEvent") then pcall(function() shootRemote:FireServer(theirHRP.Position) end) end
+                    end
+                    theirHumanoid.Health = 0
+                    killedCount = killedCount + 1
+                    task.wait(0.05)
+                end
+            end
+        end
+    end
+    
+    if myHRP and myHRP.Parent then myHRP.CFrame = originalPos end
+    
+    if killedCount > 0 then notifyKillAll(killedCount)
+    else showNotification("Не удалось убить (нужен нож или оружие)!", "⚠") end
+end
+
+-- ===== АНТИ-ОБНАРУЖЕНИЕ =====
+local function isInLobby()
+    local char = player.Character
+    if not char then return true end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return true end
+    if hrp.Position.Y > 400 then return true end
+    return false
+end
+
+local function antiDetection()
+    if isInLobby() or not player.Character or not player.Character:FindFirstChild("Humanoid") or player.Character.Humanoid.Health <= 0 then
+        if AimbotFOV.Enabled and fovCircle then fovCircle.Visible = false end
+        if actionButtonFrame then actionButtonFrame.Visible = false end
+    end
+end
+
+-- ===== FOV =====
+local function setFOV(v) FOV = v; if FOV_Enabled then camera.FieldOfView = FOV end end
+local function toggleFOV(v) FOV_Enabled = v; camera.FieldOfView = v and FOV or 70 end
+local function toggleFPSBoost(v) FPSBoost = v; Lighting.GlobalShadows = not v; Lighting.Brightness = v and 1 or 2 end
+
+-- ===== АНТИ-ФЛИНГ =====
+local lastPosition = nil; local lastVelocity = Vector3.zero; local flingCooldown = 0
+local function antiFlingFunction() if not MainExtras.AntiFling then return end; local char = player.Character; if not char then return end; local hrp = char:FindFirstChild("HumanoidRootPart"); local hum = char:FindFirstChild("Humanoid"); if not hrp or not hum then return end; local currentPos = hrp.Position; local currentVel = hrp.Velocity; local speed = currentVel.Magnitude; if lastVelocity then local velChange = (currentVel - lastVelocity).Magnitude; if velChange > 200 then hrp.Velocity = Vector3.zero; hrp.AssemblyLinearVelocity = Vector3.zero; if lastPosition then hrp.CFrame = CFrame.new(lastPosition) end; flingCooldown = tick() + 0.3 end end; if speed > 250 and tick() > flingCooldown then hrp.Velocity = Vector3.zero; hrp.AssemblyLinearVelocity = Vector3.zero; if lastPosition then hrp.CFrame = CFrame.new(lastPosition) end; flingCooldown = tick() + 0.3 end; if currentPos.Y < -100 or currentPos.Y > 500 then if lastPosition then hrp.CFrame = CFrame.new(lastPosition + Vector3.new(0, 5, 0)) end end; pcall(function() local rootPart = char:FindFirstChild("HumanoidRootPart"); if rootPart then rootPart:SetNetworkOwner(nil) end end); if speed < 50 and currentPos.Y > -10 and currentPos.Y < 100 then lastPosition = currentPos end; lastVelocity = currentVel end
+
+-- ===== ИГРОВОЙ ЦИКЛ =====
+spawn(function() while task.wait(0.05) do 
+    antiFlingFunction()
+    antiDetection()
+    
+    if Rage.GodMode then local c = player.Character; if c then local h = c:FindFirstChild("Humanoid"); if h and h.Health > 0 then h.MaxHealth = 1e9; h.Health = 1e9 end end end
+    if Rage.AntiKnife then local myChar = player.Character; if myChar then local myHRP = myChar:FindFirstChild("HumanoidRootPart"); if myHRP then for _, p in pairs(Players:GetPlayers()) do if p ~= player and p.Character then local theirHRP = p.Character:FindFirstChild("HumanoidRootPart"); if theirHRP and getPlayerRole(p) == "Murderer" then local dist = (theirHRP.Position - myHRP.Position).Magnitude; if dist < 15 then local awayDirection = (myHRP.Position - theirHRP.Position).Unit; myHRP.CFrame = CFrame.new(myHRP.Position + awayDirection * 50 + Vector3.new(0, 5, 0)) end end end end end end end
+end end)
+
+-- ===== ТУМАН =====
+local function updateFogColor() if not FogSettings.Enabled then return end; local color = FogSettings.ColorMode == "Red" and Color3.fromRGB(255,0,0) or FogSettings.ColorMode == "Blue" and Color3.fromRGB(0,100,255) or FogSettings.ColorMode == "Cyan" and Color3.fromRGB(0,255,255) or Color3.fromRGB(255,255,255); Lighting.FogColor = color end
+local function toggleFog(v) Visual.Fog = v; FogSettings.Enabled = v; if v then updateFogColor(); Lighting.FogEnd = FogSettings.Distance; Lighting.FogStart = FogSettings.Distance * 0.3 else Lighting.FogEnd = 1e5; Lighting.FogStart = 1e5 end end
+local function setFogColor(mode) FogSettings.ColorMode = mode; if Visual.Fog then updateFogColor() end end
+local function setFogDistance(v) FogSettings.Distance = v; if Visual.Fog then Lighting.FogEnd = v; Lighting.FogStart = v * 0.3 end end
+
+-- ===== КАСТОМНЫЙ ПРИЦЕЛ =====
+local crosshairGui = Instance.new("ScreenGui", playerGui); crosshairGui.Name = "RotatingCrosshairGui"; crosshairGui.ResetOnSpawn = false; crosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local centerAnchor = Instance.new("Frame", crosshairGui); centerAnchor.Size = UDim2.new(0, 0, 0, 0); centerAnchor.Position = UDim2.new(0.5, 0, 0.5, -31); centerAnchor.BackgroundTransparency = 1; centerAnchor.ZIndex = 99999
+local crosshairLines = {}
+local function getCrosshairColor3() if CrosshairSettings.Color == "White" then return Color3.fromRGB(255, 255, 255) elseif CrosshairSettings.Color == "Red" then return Color3.fromRGB(255, 0, 0) elseif CrosshairSettings.Color == "Blue" then return Color3.fromRGB(0, 150, 255) elseif CrosshairSettings.Color == "Purple" then return Color3.fromRGB(180, 0, 255) end; return Color3.fromRGB(255, 255, 255) end
+local function updateCrosshairUI()
+    if #crosshairLines == 0 then for _, line in ipairs(crosshairLines) do line:Destroy() end; crosshairLines = {}; local color = getCrosshairColor3(); local thickness = CrosshairSettings.Thickness == "Thick" and 3 or 1; local lineLength = 10 + CrosshairSettings.Size * 0.4; local gap = 4; local function cl(name, size, pos) local l = Instance.new("Frame", centerAnchor); l.Name = name; l.Size = size; l.Position = pos; l.BackgroundColor3 = color; l.BorderSizePixel = 0; l.ZIndex = 99999; table.insert(crosshairLines, l) end; cl("Top", UDim2.new(0, thickness, 0, lineLength), UDim2.new(0, -thickness/2, 0, -gap - lineLength)); cl("Bottom", UDim2.new(0, thickness, 0, lineLength), UDim2.new(0, -thickness/2, 0, gap)); cl("Left", UDim2.new(0, lineLength, 0, thickness), UDim2.new(0, -gap - lineLength, 0, -thickness/2)); cl("Right", UDim2.new(0, lineLength, 0, thickness), UDim2.new(0, gap, 0, -thickness/2)) end
+    local color = getCrosshairColor3(); local thickness = CrosshairSettings.Thickness == "Thick" and 3 or 1; local lineLength = 10 + CrosshairSettings.Size * 0.4; local gap = 4
+    for _, line in ipairs(crosshairLines) do line.Visible = CrosshairSettings.Enabled; line.BackgroundColor3 = color; if line.Name == "Top" then line.Size = UDim2.new(0, thickness, 0, lineLength); line.Position = UDim2.new(0, -thickness/2, 0, -gap - lineLength) elseif line.Name == "Bottom" then line.Size = UDim2.new(0, thickness, 0, lineLength); line.Position = UDim2.new(0, -thickness/2, 0, gap) elseif line.Name == "Left" then line.Size = UDim2.new(0, lineLength, 0, thickness); line.Position = UDim2.new(0, -gap - lineLength, 0, -thickness/2) elseif line.Name == "Right" then line.Size = UDim2.new(0, lineLength, 0, thickness); line.Position = UDim2.new(0, gap, 0, -thickness/2) end end
+end
+local crosshairRotation = 0
+RunService.RenderStepped:Connect(function(dt) crosshairRotation = (crosshairRotation + 45 * dt) % 360; centerAnchor.Rotation = crosshairRotation; updateCrosshairUI() end)
+local function toggleCrosshair(v) CrosshairSettings.Enabled = v; updateCrosshairUI() end
+local function setCrosshairSize(size) CrosshairSettings.Size = size; updateCrosshairUI() end
+local function setCrosshairColor(color) CrosshairSettings.Color = color; updateCrosshairUI() end
+local function setCrosshairThickness(thickness) CrosshairSettings.Thickness = thickness; updateCrosshairUI() end
+updateCrosshairUI()
+
+-- ===== GUN GRAB =====
+local function findGun() for _, item in pairs(Workspace:GetDescendants()) do if item:IsA("BasePart") and (item.Name == "GunDrop" or (item.Name == "Handle" and item.Parent and item.Parent.Name == "Gun")) then if not item:FindFirstAncestorOfClass("Model") or not item:FindFirstAncestorOfClass("Model"):FindFirstChildOfClass("Humanoid") then return item end end end; return nil end
+local function grabGun() if not GunGrabEnabled then return end; local char = player.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart"); if not hrp then return end; if (player.Backpack and player.Backpack:FindFirstChild("Gun")) or (char and char:FindFirstChild("Gun")) then return end; local gun = findGun(); if not gun then return end; local saved = hrp.CFrame; Workspace.Gravity = 0; for _, p in pairs(char:GetChildren()) do if p:IsA("BasePart") then p.CanCollide = false end end; hrp.CFrame = gun.CFrame + Vector3.new(0, 2, 0); if firetouchinterest then firetouchinterest(hrp, gun, 0); task.wait(0.05); firetouchinterest(hrp, gun, 1) end; task.wait(0.3); hrp.CFrame = saved; Workspace.Gravity = 196.2; for _, p in pairs(char:GetChildren()) do if p:IsA("BasePart") then p.CanCollide = true end end end
+UserInputService.InputBegan:Connect(function(input, gpe) if not gpe and input.KeyCode == Enum.KeyCode.E and GunGrabEnabled then grabGun() end end)
+
+-- ===== ТП ПО КЛИКУ =====
+local clickTPConnection = nil
+local function toggleClickTP(v) MainExtras.ClickTP = v; if v then if clickTPConnection then clickTPConnection:Disconnect() end; clickTPConnection = Mouse.Button1Down:Connect(function() if not MainExtras.ClickTP then return end; local char = player.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart"); if hrp and Mouse.Hit then hrp.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0)) end end) else if clickTPConnection then clickTPConnection:Disconnect(); clickTPConnection = nil end end end
+
+-- ===== УДАЛЕНИЕ ИНТЕРФЕЙСА =====
+local savedGUIStates = {}
+local function removeMM2UI() if not next(savedGUIStates) then for _, gui in ipairs(playerGui:GetChildren()) do if gui:IsA("ScreenGui") then savedGUIStates[gui.Name] = gui.Enabled end end end; for _, gui in ipairs(playerGui:GetChildren()) do if gui:IsA("ScreenGui") then local name = gui.Name:lower(); if name ~= "touchgui" and name ~= "heseracfg" and name ~= "heserawatermark" and name ~= "heseranotifications" and name ~= "rotatingcrosshairgui" and name ~= "mm2_custom_lock" and name ~= "dynamicactionbutton" and name ~= "knifeslider" and name ~= "aimbotfov" and name ~= "firelogo" then gui.Enabled = false end end end end
+local function restoreMM2UI() for _, gui in ipairs(playerGui:GetChildren()) do if gui:IsA("ScreenGui") then local name = gui.Name:lower(); if name ~= "heseracfg" and name ~= "heserawatermark" and name ~= "heseranotifications" and name ~= "rotatingcrosshairgui" and name ~= "mm2_custom_lock" and name ~= "dynamicactionbutton" and name ~= "knifeslider" and name ~= "aimbotfov" and name ~= "firelogo" then if savedGUIStates[gui.Name] ~= nil then gui.Enabled = savedGUIStates[gui.Name] else gui.Enabled = true end end end end; savedGUIStates = {} end
+local function toggleRemoveUI(v) MainExtras.RemoveUI = v; if v then removeMM2UI() else restoreMM2UI() end end
+
+-- ===== RAGE =====
+local Rage = {GodMode = false, AntiKnife = false, Fly = false, Noclip = false}
+local function setGodMode(v) Rage.GodMode = v end
+local function setAntiKnife(v) Rage.AntiKnife = v end
+
+-- ===== GUI С ПРОЗРАЧНОСТЬЮ 20% =====
+local gui = Instance.new("ScreenGui", playerGui); gui.IgnoreGuiInset = true; gui.DisplayOrder = 999; gui.Name = "HESERACFG"; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local gunBtn = Instance.new("TextButton", gui)
+gunBtn.Size = UDim2.new(0, 52, 0, 52); gunBtn.Position = UDim2.new(0.86, 0, 0.20, 0); gunBtn.Text = "[GUN]"
+gunBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0); gunBtn.BackgroundTransparency = 0.9; gunBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+gunBtn.Font = Enum.Font.GothamBold; gunBtn.TextSize = 16; gunBtn.ZIndex = 9999; gunBtn.AutoButtonColor = false; gunBtn.Visible = false
+Instance.new("UICorner", gunBtn).CornerRadius = UDim.new(1, 0)
+local gunRot = 0
+RunService.Heartbeat:Connect(function(dt) gunBtn.Visible = GunGrabEnabled; if not GunGrabEnabled then return end; if findGun() then gunRot = (gunRot + 180 * dt) % 360; gunBtn.BackgroundColor3 = Color3.fromRGB(0, 50, 0) else gunRot = (gunRot + 60 * dt) % 360; gunBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0) end; gunBtn.Rotation = gunRot end)
+gunBtn.MouseButton1Click:Connect(grabGun)
+
+local win = Instance.new("Frame", gui); win.Size = UDim2.new(0,400,0,250)
+win.BackgroundColor3 = Color3.fromRGB(0, 0, 0); win.BackgroundTransparency = 0.2
+win.BorderSizePixel = 0; win.ZIndex = 9999; win.Visible = false; win.ClipsDescendants = true; win.Position = UDim2.new(0.02,0,0.18,0)
+Instance.new("UICorner", win).CornerRadius = UDim.new(0,10)
+
+local winDragging, winDragStart, winPosStart = false, Vector2.zero, Vector2.zero
+local hdrDrag = Instance.new("TextButton", win); hdrDrag.Size = UDim2.new(1,0,0,25); hdrDrag.BackgroundTransparency = 1; hdrDrag.Text = ""; hdrDrag.ZIndex = 10000
+hdrDrag.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then winDragging = true; winDragStart = i.Position; winPosStart = win.AbsolutePosition; i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then winDragging = false end end) end end)
+UserInputService.InputChanged:Connect(function(i) if winDragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then win.Position = UDim2.new(0, winPosStart.X + i.Position.X - winDragStart.X, 0, winPosStart.Y + i.Position.Y - winDragStart.Y) end end)
+
+local function toggleMenu()
+    if win.Visible then TweenService:Create(win, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0,0,0,0)}):Play(); task.wait(0.2); win.Visible = false
+    else win.Visible = true; win.Size = UDim2.new(0,0,0,0); TweenService:Create(win, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0,400,0,250)}):Play() end
+end
+
+if wmButton then wmButton.MouseButton1Click:Connect(toggleMenu) end
+
+-- Заголовок меню с НАРИСОВАННЫМ логотипом огня
+local hdr = Instance.new("Frame", win); hdr.Size = UDim2.new(1,0,0,35)
+hdr.BackgroundColor3 = Color3.fromRGB(0, 0, 0); hdr.BackgroundTransparency = 0.15; hdr.ZIndex = 9999; hdr.Name = "Header"
+Instance.new("UICorner", hdr).CornerRadius = UDim.new(0,10)
+local hc2 = Instance.new("Frame", hdr); hc2.Size = UDim2.new(1,0,0.5,0); hc2.Position = UDim2.new(0,0,0.5,0); hc2.BackgroundColor3 = Color3.fromRGB(0, 0, 0); hc2.BackgroundTransparency = 0.15; hc2.BorderSizePixel = 0; hc2.ZIndex = 9999
+
+-- НАРИСОВАННЫЙ ЛОГОТИП ОГНЯ (из линий)
+local menuFireLogo = Instance.new("Frame", hdr)
+menuFireLogo.Size = UDim2.new(0, 30, 0, 24)
+menuFireLogo.Position = UDim2.new(0, 6, 0, 5)
+menuFireLogo.BackgroundTransparency = 1
+menuFireLogo.ZIndex = 10000
+
+-- Внешнее пламя (красный контур)
+local outerFlame = Instance.new("Frame", menuFireLogo)
+outerFlame.Size = UDim2.new(0, 20, 0, 20)
+outerFlame.Position = UDim2.new(0, 5, 0, 2)
+outerFlame.BackgroundColor3 = getMenuColor()
+outerFlame.BackgroundTransparency = 0.3
+outerFlame.BorderSizePixel = 0
+outerFlame.Rotation = 45
+outerFlame.ZIndex = 10001
+Instance.new("UICorner", outerFlame).CornerRadius = UDim.new(0, 3)
+
+-- Среднее пламя (оранжевый)
+local midFlame = Instance.new("Frame", menuFireLogo)
+midFlame.Size = UDim2.new(0, 14, 0, 16)
+midFlame.Position = UDim2.new(0, 8, 0, 4)
+midFlame.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+midFlame.BackgroundTransparency = 0.2
+midFlame.BorderSizePixel = 0
+midFlame.Rotation = 45
+midFlame.ZIndex = 10002
+Instance.new("UICorner", midFlame).CornerRadius = UDim.new(0, 2)
+
+-- Внутреннее пламя (жёлтый)
+local innerFlame = Instance.new("Frame", menuFireLogo)
+innerFlame.Size = UDim2.new(0, 8, 0, 12)
+innerFlame.Position = UDim2.new(0, 11, 0, 6)
+innerFlame.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+innerFlame.BackgroundTransparency = 0.1
+innerFlame.BorderSizePixel = 0
+innerFlame.Rotation = 45
+innerFlame.ZIndex = 10003
+Instance.new("UICorner", innerFlame).CornerRadius = UDim.new(0, 2)
+
+-- Ядро (белое)
+local coreFlame = Instance.new("Frame", menuFireLogo)
+coreFlame.Size = UDim2.new(0, 4, 0, 6)
+coreFlame.Position = UDim2.new(0, 13, 0, 9)
+coreFlame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+coreFlame.BackgroundTransparency = 0
+coreFlame.BorderSizePixel = 0
+coreFlame.Rotation = 45
+coreFlame.ZIndex = 10004
+Instance.new("UICorner", coreFlame).CornerRadius = UDim.new(0, 1)
+
+local ttl = Instance.new("TextLabel", hdr); ttl.Size = UDim2.new(0,170,1,0); ttl.Position = UDim2.new(0.12,0,0,0); ttl.Text = "EXTERNAL HESERACFG"; ttl.TextColor3 = getMenuColor(); ttl.BackgroundTransparency = 1; ttl.Font = Enum.Font.GothamBlack; ttl.TextSize = 9; ttl.ZIndex = 9999
+
+local function destroyAll()
+    toggleFOV(false); toggleFPSBoost(false); toggleFog(false); toggleBunnyHop(false); toggleSpinbot(false); toggleNoclip(false); setFly(false)
+    toggleClickTP(false); toggleCrosshair(false); toggleShiftLock(false); toggleRemoveUI(false)
+    AimbotFOV.Enabled = false; if fovCircle then fovCircle.Visible = false end
+    Aimbot.SilentAim = false; silentAimActive = false; Aimbot.FireButtonEnabled = false
+    if actionButtonFrame then actionButtonFrame.Visible = false end
+    if knifeSliderFrame then knifeSliderFrame.Visible = false end
+    VisualEffects.GlowBody = false; VisualEffects.OrbitOrbs = false; VisualEffects.FloatingParticles = false
+    Visual.BlackSky = false; setSkyColor("Reset")
+    Visual.GraphicsMode = "Off"; applyGraphicsMode()
+    Rage.GodMode = false; Rage.AntiKnife = false; MainExtras.AntiFling = false
+    GunGrabEnabled = false; if gunBtn then gunBtn.Visible = false end
+    if lockButtonFrame then lockButtonFrame.Visible = false end
+    unhookFire(); disableShiftLock(); restoreMM2UI(); clearEffects()
+    for _, p in ipairs(particles) do p.Instance:Destroy(); p.Highlight:Destroy() end; particles = {}
+    for _, hl in pairs(PlayerChams) do hl:Destroy() end; PlayerChams = {}
+    for _, e in pairs(ESPObjects) do pcall(function() e.boxFill:Remove(); e.boxOutline:Remove(); e.box:Remove(); e.tracer:Remove(); e.text:Remove() end) end; ESPObjects = {}
+    for _, line in ipairs(crosshairLines) do line:Destroy() end; crosshairLines = {}
+    if playerGui:FindFirstChild("HeseraWatermark") then playerGui.HeseraWatermark:Destroy() end
+    if playerGui:FindFirstChild("FireLogo") then playerGui.FireLogo:Destroy() end
+    if playerGui:FindFirstChild("HeseraNotifications") then playerGui.HeseraNotifications:Destroy() end
+    if LockGui then LockGui:Destroy(); LockGui = nil end
+    if ActionGui then ActionGui:Destroy(); ActionGui = nil end
+    if KnifeSliderGui then KnifeSliderGui:Destroy(); KnifeSliderGui = nil end
+    if playerGui:FindFirstChild("AimbotFOV") then playerGui.AimbotFOV:Destroy() end
+    if crosshairGui then crosshairGui:Destroy() end
+    gui:Destroy()
+end
+
+local cls = Instance.new("TextButton", hdr); cls.Size = UDim2.new(0,16,0,16); cls.Position = UDim2.new(1,-20,0.5,-8); cls.Text = "X"
+cls.BackgroundColor3 = Color3.fromRGB(255,0,0); cls.BackgroundTransparency = 0.1; cls.TextColor3 = Color3.fromRGB(255,255,255)
+cls.Font = Enum.Font.GothamBold; cls.TextSize = 8; cls.ZIndex = 9999; cls.AutoButtonColor = false
+Instance.new("UICorner", cls).CornerRadius = UDim.new(1,0)
+cls.MouseEnter:Connect(function() cls.BackgroundColor3 = Color3.fromRGB(255,0,0); cls.BackgroundTransparency = 0.2 end)
+cls.MouseLeave:Connect(function() cls.BackgroundColor3 = Color3.fromRGB(255,50,50); cls.BackgroundTransparency = 0.1 end)
+cls.MouseButton1Click:Connect(destroyAll)
+
+local left = Instance.new("Frame", win); left.Size = UDim2.new(0,60,1,-35); left.Position = UDim2.new(0,0,0,35)
+left.BackgroundColor3 = Color3.fromRGB(0, 0, 0); left.BackgroundTransparency = 0.15; left.ZIndex = 9999; left.Name = "LeftPanel"
+local right = Instance.new("Frame", win); right.Size = UDim2.new(1,-60,1,-35); right.Position = UDim2.new(0,60,0,35)
+right.BackgroundColor3 = Color3.fromRGB(0, 0, 0); right.BackgroundTransparency = 0.15; right.ZIndex = 9999; right.Name = "RightPanel"
+local scr = Instance.new("ScrollingFrame", right); scr.Size = UDim2.new(1,0,1,0); scr.BackgroundTransparency = 1; scr.BorderSizePixel = 0
+scr.ScrollBarThickness = 2; scr.ScrollBarImageColor3 = getMenuColor(); scr.ZIndex = 9999; scr.CanvasSize = UDim2.new(0,0,0,12000)
+
+local function updateMenuColors()
+    local c1 = getMenuColor()
+    if ttl then ttl.TextColor3 = c1 end
+    if scr then scr.ScrollBarImageColor3 = c1 end
+    if outerFlame then outerFlame.BackgroundColor3 = c1 end
+end
+
+local function clr() for _, c in pairs(scr:GetChildren()) do if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end end end
+
+local function makeToggle(name, get, set, y)
+    local c1, c2, c3, c4, c5, c6, c7 = getMenuColor()
+    local f = Instance.new("Frame", scr); f.Size = UDim2.new(0.92,0,0,25); f.Position = UDim2.new(0.04,0,0,y)
+    f.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f.BackgroundTransparency = 0.3; f.ZIndex = 10
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,5)
+    local lab = Instance.new("TextLabel", f); lab.Size = UDim2.new(0.55,0,1,0); lab.Position = UDim2.new(0.06,0,0,0); lab.Text = name; lab.TextColor3 = Color3.fromRGB(255, 255, 255); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 8; lab.TextXAlignment = Enum.TextXAlignment.Left; lab.ZIndex = 11
+    local val = get()
+    local tg = Instance.new("Frame", f); tg.Size = UDim2.new(0,26,0,13); tg.Position = UDim2.new(1,-32,0.5,-6.5); tg.BackgroundColor3 = val and c1 or Color3.fromRGB(30,0,0); tg.BorderSizePixel = 0; tg.ZIndex = 11
+    Instance.new("UICorner", tg).CornerRadius = UDim.new(1,0)
+    local kn = Instance.new("Frame", tg); kn.Size = UDim2.new(0,9,0,9); kn.Position = val and UDim2.new(0,15,0,2) or UDim2.new(0,2,0,2); kn.BackgroundColor3 = Color3.fromRGB(255,255,255); kn.BorderSizePixel = 0; kn.ZIndex = 12
+    Instance.new("UICorner", kn).CornerRadius = UDim.new(1,0)
+    local tb = Instance.new("TextButton", f); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+    local state = val
+    tb.MouseButton1Click:Connect(function() state = not state; set(state); TweenService:Create(tg, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = state and c1 or Color3.fromRGB(30,0,0)}):Play(); TweenService:Create(kn, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = state and UDim2.new(0,15,0,2) or UDim2.new(0,2,0,2)}):Play() end)
+end
+
+local function makeSlider(name, get, set, minV, maxV, y)
+    local c1, c2, c3, c4, c5, c6, c7 = getMenuColor()
+    local f = Instance.new("Frame", scr); f.Size = UDim2.new(0.92,0,0,38); f.Position = UDim2.new(0.04,0,0,y)
+    f.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f.BackgroundTransparency = 0.3; f.ZIndex = 10
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,5)
+    local val = get(); local range = maxV - minV
+    local lab = Instance.new("TextLabel", f); lab.Size = UDim2.new(0.75,0,0,14); lab.Position = UDim2.new(0.06,0,0,2); lab.Text = name .. ": " .. math.floor(val); lab.TextColor3 = Color3.fromRGB(255, 255, 255); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 7; lab.TextXAlignment = Enum.TextXAlignment.Left; lab.ZIndex = 11
+    local sb = Instance.new("Frame", f); sb.Size = UDim2.new(0.86,0,0,4); sb.Position = UDim2.new(0.06,0,0,24); sb.BackgroundColor3 = Color3.fromRGB(20,20,20); sb.BorderSizePixel = 0; sb.ZIndex = 11
+    Instance.new("UICorner", sb).CornerRadius = UDim.new(1,0)
+    local fill = Instance.new("Frame", sb); fill.Size = UDim2.new((val-minV)/range,0,1,0); fill.BackgroundColor3 = c1; fill.BorderSizePixel = 0; fill.ZIndex = 11
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
+    local knob = Instance.new("Frame", sb); knob.Size = UDim2.new(0,10,0,10); knob.Position = UDim2.new((val-minV)/range,-5,0,-3); knob.BackgroundColor3 = Color3.fromRGB(255,255,255); knob.BorderSizePixel = 0; knob.ZIndex = 12
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
+    local db = Instance.new("TextButton", f); db.Size = UDim2.new(1,0,1,0); db.BackgroundTransparency = 1; db.Text = ""; db.ZIndex = 100
+    local dragging = false
+    local function us(inputX) local relX = math.clamp((inputX-sb.AbsolutePosition.X)/sb.AbsoluteSize.X,0,1); local nv = minV+relX*range; set(nv); TweenService:Create(fill, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(relX,0,1,0)}):Play(); TweenService:Create(knob, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(relX,-5,0,-3)}):Play(); lab.Text = name .. ": " .. math.floor(nv) end
+    db.MouseButton1Down:Connect(function() dragging = true end); db.MouseButton1Up:Connect(function() dragging = false end); db.MouseLeave:Connect(function() dragging = false end)
+    UserInputService.InputChanged:Connect(function(i) if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then us(i.Position.X) end end)
+    db.MouseButton1Click:Connect(function() us(UserInputService:GetMouseLocation().X) end)
+end
+
+local function makeButton(name, y, action, color)
+    local c1, c2, c3, c4, c5, c6, c7 = getMenuColor()
+    local f = Instance.new("Frame", scr); f.Size = UDim2.new(0.92,0,0,28); f.Position = UDim2.new(0.04,0,0,y)
+    f.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f.BackgroundTransparency = 0.3; f.ZIndex = 10
+    Instance.new("UICorner", f).CornerRadius = UDim.new(0,5)
+    local lab = Instance.new("TextLabel", f); lab.Size = UDim2.new(0.45,0,1,0); lab.Position = UDim2.new(0.06,0,0,0); lab.Text = name; lab.TextColor3 = Color3.fromRGB(255, 255, 255); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 8; lab.TextXAlignment = Enum.TextXAlignment.Left; lab.ZIndex = 11
+    local b = Instance.new("TextButton", f); b.Size = UDim2.new(0,38,0,18); b.Position = UDim2.new(1,-44,0.5,-9); b.Text = T.go; b.BackgroundColor3 = color or c1; b.BackgroundTransparency = 0.1; b.TextColor3 = Color3.fromRGB(255,255,255); b.Font = Enum.Font.GothamBold; b.TextSize = 8; b.ZIndex = 100; b.AutoButtonColor = false
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
+    b.MouseEnter:Connect(function() TweenService:Create(b, TweenInfo.new(0.3), {BackgroundTransparency = 0.0}):Play() end)
+    b.MouseLeave:Connect(function() TweenService:Create(b, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play() end)
+    b.MouseButton1Click:Connect(action)
+end
+
+-- ===== ЗАПОЛНЕНИЕ КАТЕГОРИЙ (СОКРАЩЁННАЯ ВЕРСИЯ) =====
+local function fillCat(num)
+    clr()
+    if num == 1 then -- RAGE
+        local y = 3
+        makeToggle(T.godMode, function() return Rage.GodMode end, function(v) setGodMode(v); fillCat(1) end, y); y = y + 28
+        makeToggle(T.antiKnife, function() return Rage.AntiKnife end, function(v) setAntiKnife(v); fillCat(1) end, y); y = y + 28
+        makeToggle(T.antiFling, function() return MainExtras.AntiFling end, function(v) MainExtras.AntiFling = v end, y); y = y + 28
+        makeToggle(T.fly, function() return Rage.Fly end, function(v) setFly(v); fillCat(1) end, y); y = y + 28
+        if Rage.Fly then makeSlider("  " .. T.flySpeed, function() return MovementSettings.FlySpeed end, function(v) MovementSettings.FlySpeed = v end, 10, 200, y); y = y + 42 end
+        makeToggle(T.noclip, function() return Rage.Noclip end, function(v) toggleNoclip(v); fillCat(1) end, y); y = y + 28
+        if Rage.Noclip then makeSlider("  " .. T.noclipSpeed, function() return MovementSettings.NoclipSpeed end, function(v) MovementSettings.NoclipSpeed = v end, 10, 200, y); y = y + 42 end
+        makeToggle(T.bhop, function() return MainExtras.BunnyHop end, function(v) toggleBunnyHop(v); fillCat(1) end, y); y = y + 28
+        if MainExtras.BunnyHop then makeSlider("  " .. T.bhopSpeed, function() return MovementSettings.BunnyHopSpeed end, function(v) MovementSettings.BunnyHopSpeed = v end, 1.1, 5, y); y = y + 42; makeSlider("  " .. T.maxSpeed, function() return MovementSettings.BunnyHopMaxSpeed end, function(v) MovementSettings.BunnyHopMaxSpeed = v end, 20, 500, y); y = y + 42 end
+        makeToggle(T.spinbot, function() return MainExtras.Spinbot end, function(v) toggleSpinbot(v); fillCat(1) end, y); y = y + 28
+        if MainExtras.Spinbot then makeSlider("  " .. T.spinSpeed, function() return MovementSettings.SpinSpeed end, function(v) MovementSettings.SpinSpeed = v end, 1, 50, y); y = y + 42
+            for _, mode in ipairs({"Normal","Ultra","Random"}) do 
+                local c1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.6,0,1,0); lb.Position = UDim2.new(0.06,0,0,0); lb.Text = "  " .. mode; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb3 = Instance.new("TextButton", f3); tb3.Size = UDim2.new(1,0,1,0); tb3.BackgroundTransparency = 1; tb3.Text = ""; tb3.ZIndex = 100
+                tb3.MouseButton1Click:Connect(function() MovementSettings.SpinMode = mode; fillCat(1) end)
+                if MovementSettings.SpinMode == mode then f3.BackgroundColor3 = c1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24
+            end
+        end
+        makeToggle(T.gunGrab, function() return GunGrabEnabled end, function(v) GunGrabEnabled = v; gunBtn.Visible = v end, y); y = y + 28
+        makeToggle(T.clickTP, function() return MainExtras.ClickTP end, function(v) toggleClickTP(v); fillCat(1) end, y); y = y + 28
+    elseif num == 2 then -- AIM
+        local y = 3
+        local c1 = getMenuColor()
+        local fovTitle = Instance.new("TextLabel", scr); fovTitle.Size = UDim2.new(0.9,0,0,18); fovTitle.Position = UDim2.new(0.05,0,0,y); fovTitle.Text = "--- " .. T.aimbotFOV; fovTitle.TextColor3 = c1; fovTitle.BackgroundTransparency = 1; fovTitle.Font = Enum.Font.GothamBlack; fovTitle.TextSize = 9; fovTitle.TextXAlignment = Enum.TextXAlignment.Left; fovTitle.ZIndex = 10; y = y + 20
+        makeToggle(T.aimbotFOV, function() return AimbotFOV.Enabled end, function(v) AimbotFOV.Enabled = v; if fovCircle then fovCircle.Visible = v end; if v then hookFire() end; fillCat(2) end, y); y = y + 28
+        if AimbotFOV.Enabled then
+            makeSlider("  " .. T.fovRadius, function() return AimbotFOV.Radius end, function(v) AimbotFOV.Radius = v; updateFOVSize() end, 50, 300, y); y = y + 42
+            makeSlider("  " .. T.aimbotRange, function() return AimbotFOV.Range end, function(v) AimbotFOV.Range = v end, 50, 1000, y); y = y + 42
+            local modeTitle = Instance.new("TextLabel", scr); modeTitle.Size = UDim2.new(0.8,0,0,16); modeTitle.Position = UDim2.new(0.1,0,0,y); modeTitle.Text = "  " .. T.aimMode; modeTitle.TextColor3 = Color3.fromRGB(255,255,255); modeTitle.BackgroundTransparency = 1; modeTitle.Font = Enum.Font.GothamBold; modeTitle.TextSize = 7; modeTitle.TextXAlignment = Enum.TextXAlignment.Left; modeTitle.ZIndex = 10; y = y + 18
+            for _, mode in ipairs({{"Always", T.always}, {"WeaponOnly", T.weaponOnly}}) do
+                local cm1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.6,0,1,0); lb.Position = UDim2.new(0.06,0,0,0); lb.Text = "  " .. mode[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb = Instance.new("TextButton", f3); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+                tb.MouseButton1Click:Connect(function() AimbotFOV.Mode = mode[1]; fillCat(2) end)
+                if AimbotFOV.Mode == mode[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24
+            end
+        end
+        local st = Instance.new("TextLabel", scr); st.Size = UDim2.new(0.9,0,0,18); st.Position = UDim2.new(0.05,0,0,y); st.Text = "--- " .. T.silentAimTitle; st.TextColor3 = c1; st.BackgroundTransparency = 1; st.Font = Enum.Font.GothamBlack; st.TextSize = 9; st.TextXAlignment = Enum.TextXAlignment.Left; st.ZIndex = 10; y = y + 20
+        makeToggle(T.silentAim, function() return Aimbot.SilentAim end, function(v) Aimbot.SilentAim = v; if v then hookFire() else if not AimbotFOV.Enabled then unhookFire() end end; fillCat(2) end, y); y = y + 28
+        if Aimbot.SilentAim or AimbotFOV.Enabled then 
+            makeToggle("  " .. T.fireButton, function() return Aimbot.FireButtonEnabled end, function(v) Aimbot.FireButtonEnabled = v; updateActionButtonVisibility(); fillCat(2) end, y); y = y + 28
+        end
+    elseif num == 3 then -- VISUAL
+        local y = 3
+        local c1 = getMenuColor()
+        makeToggle(T.esp, function() return ESP.Enabled end, function(v) ESP.Enabled = v; fillCat(3) end, y); y = y + 28
+        if ESP.Enabled then 
+            makeToggle("  " .. T.box, function() return ESP.Box end, function(v) ESP.Box = v end, y); y = y + 28
+            makeToggle("  " .. T.tracers, function() return ESP.Tracer end, function(v) ESP.Tracer = v end, y); y = y + 28
+            makeToggle("  " .. T.names, function() return ESP.Name end, function(v) ESP.Name = v end, y); y = y + 28
+            makeToggle("  " .. T.distance, function() return ESP.Distance end, function(v) ESP.Distance = v end, y); y = y + 28
+            makeToggle("  " .. T.chams, function() return ESP.Chams end, function(v) ESP.Chams = v end, y); y = y + 28
+        end
+        
+        local visTitle = Instance.new("TextLabel", scr); visTitle.Size = UDim2.new(0.9,0,0,18); visTitle.Position = UDim2.new(0.05,0,0,y); visTitle.Text = T.visualEffects; visTitle.TextColor3 = c1; visTitle.BackgroundTransparency = 1; visTitle.Font = Enum.Font.GothamBlack; visTitle.TextSize = 9; visTitle.TextXAlignment = Enum.TextXAlignment.Left; visTitle.ZIndex = 10; y = y + 20
+        makeToggle(T.glowBody, function() return VisualEffects.GlowBody end, function(v) VisualEffects.GlowBody = v; applyEffects(player.Character) end, y); y = y + 28
+        makeToggle(T.orbitOrbs, function() return VisualEffects.OrbitOrbs end, function(v) VisualEffects.OrbitOrbs = v; applyEffects(player.Character) end, y); y = y + 28
+        if VisualEffects.OrbitOrbs or VisualEffects.GlowBody then
+            local orbColorTitle = Instance.new("TextLabel", scr); orbColorTitle.Size = UDim2.new(0.8,0,0,16); orbColorTitle.Position = UDim2.new(0.1,0,0,y); orbColorTitle.Text = "  " .. T.orbColor; orbColorTitle.TextColor3 = Color3.fromRGB(255,255,255); orbColorTitle.BackgroundTransparency = 1; orbColorTitle.Font = Enum.Font.GothamBold; orbColorTitle.TextSize = 7; orbColorTitle.TextXAlignment = Enum.TextXAlignment.Left; orbColorTitle.ZIndex = 10; y = y + 18
+            for _, cData in ipairs({{"White", T.white}, {"Red", T.red}, {"Blue", T.blue}, {"Purple", T.purple}}) do
+                local cm1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local dot = Instance.new("Frame", f3); dot.Size = UDim2.new(0,12,0,12); dot.Position = UDim2.new(0.06,0,0.5,-6); dot.BorderSizePixel = 0; dot.ZIndex = 11; Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+                dot.BackgroundColor3 = cData[1] == "White" and Color3.fromRGB(255,255,255) or cData[1] == "Red" and Color3.fromRGB(255,50,50) or cData[1] == "Blue" and Color3.fromRGB(0,150,255) or Color3.fromRGB(180,0,255)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.5,0,1,0); lb.Position = UDim2.new(0.22,0,0,0); lb.Text = "  " .. cData[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb = Instance.new("TextButton", f3); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+                tb.MouseButton1Click:Connect(function() VisualEffects.OrbColor = cData[1]; applyEffects(player.Character); fillCat(3) end)
+                if VisualEffects.OrbColor == cData[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24
+            end
+        end
+        
+        makeToggle(T.floatingParticles, function() return VisualEffects.FloatingParticles end, function(v) VisualEffects.FloatingParticles = v end, y); y = y + 28
+        if VisualEffects.FloatingParticles then
+            local pColorTitle = Instance.new("TextLabel", scr); pColorTitle.Size = UDim2.new(0.8,0,0,16); pColorTitle.Position = UDim2.new(0.1,0,0,y); pColorTitle.Text = "  " .. T.particleColor; pColorTitle.TextColor3 = Color3.fromRGB(255,255,255); pColorTitle.BackgroundTransparency = 1; pColorTitle.Font = Enum.Font.GothamBold; pColorTitle.TextSize = 7; pColorTitle.TextXAlignment = Enum.TextXAlignment.Left; pColorTitle.ZIndex = 10; y = y + 18
+            for _, cData in ipairs({{"White", T.white}, {"Red", T.red}, {"Purple", T.purple}, {"Cyan", T.cyan}, {"Blue", T.blue}}) do
+                local cm1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local dot = Instance.new("Frame", f3); dot.Size = UDim2.new(0,12,0,12); dot.Position = UDim2.new(0.06,0,0.5,-6); dot.BorderSizePixel = 0; dot.ZIndex = 11; Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+                dot.BackgroundColor3 = cData[1] == "White" and Color3.fromRGB(255,255,255) or cData[1] == "Red" and Color3.fromRGB(255,50,50) or cData[1] == "Purple" and Color3.fromRGB(180,0,255) or cData[1] == "Cyan" and Color3.fromRGB(0,255,255) or Color3.fromRGB(0,150,255)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.5,0,1,0); lb.Position = UDim2.new(0.22,0,0,0); lb.Text = "  " .. cData[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb = Instance.new("TextButton", f3); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+                tb.MouseButton1Click:Connect(function() VisualEffects.ParticleColor = cData[1]; fillCat(3) end)
+                if VisualEffects.ParticleColor == cData[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24
+            end
+        end
+        
+        local gfxTitle = Instance.new("TextLabel", scr); gfxTitle.Size = UDim2.new(0.9,0,0,18); gfxTitle.Position = UDim2.new(0.05,0,0,y); gfxTitle.Text = T.graphicsMode; gfxTitle.TextColor3 = c1; gfxTitle.BackgroundTransparency = 1; gfxTitle.Font = Enum.Font.GothamBlack; gfxTitle.TextSize = 9; gfxTitle.TextXAlignment = Enum.TextXAlignment.Left; gfxTitle.ZIndex = 10; y = y + 20
+        for _, mode in ipairs({{"Off", T.off}, {"Ultra", T.ultra}, {"Dark", T.dark}}) do
+            local cm1 = getMenuColor()
+            local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+            Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+            local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.6,0,1,0); lb.Position = UDim2.new(0.06,0,0,0); lb.Text = "  " .. mode[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+            local tb3 = Instance.new("TextButton", f3); tb3.Size = UDim2.new(1,0,1,0); tb3.BackgroundTransparency = 1; tb3.Text = ""; tb3.ZIndex = 100
+            tb3.MouseButton1Click:Connect(function() setGraphicsMode(mode[1]); fillCat(3) end)
+            if Visual.GraphicsMode == mode[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+            y = y + 24
+        end
+        
+        makeToggle(T.blackSky, function() return Visual.BlackSky end, function(v) Visual.BlackSky = v; SkySettings.Enabled = v; if v then setSkyColor("Black") else setSkyColor("Reset") end; fillCat(3) end, y); y = y + 28
+        
+        local fogTitle = Instance.new("TextLabel", scr); fogTitle.Size = UDim2.new(0.9,0,0,18); fogTitle.Position = UDim2.new(0.05,0,0,y); fogTitle.Text = "--- " .. T.fogTitle; fogTitle.TextColor3 = c1; fogTitle.BackgroundTransparency = 1; fogTitle.Font = Enum.Font.GothamBlack; fogTitle.TextSize = 9; fogTitle.TextXAlignment = Enum.TextXAlignment.Left; fogTitle.ZIndex = 10; y = y + 20
+        makeToggle(T.fog, function() return Visual.Fog end, function(v) toggleFog(v); fillCat(3) end, y); y = y + 28
+        if Visual.Fog then 
+            makeSlider("  " .. T.fogDist, function() return FogSettings.Distance end, setFogDistance, 10, 500, y); y = y + 42
+            local fogColors = {{"White", T.white}, {"Red", T.red}, {"Blue", T.blue}, {"Cyan", T.cyan}}
+            for _, fc in ipairs(fogColors) do 
+                local cm1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local dot = Instance.new("Frame", f3); dot.Size = UDim2.new(0,12,0,12); dot.Position = UDim2.new(0.06,0,0.5,-6); dot.BorderSizePixel = 0; dot.ZIndex = 11; Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+                dot.BackgroundColor3 = fc[1] == "White" and Color3.fromRGB(255,255,255) or fc[1] == "Red" and Color3.fromRGB(255,0,0) or fc[1] == "Blue" and Color3.fromRGB(0,100,255) or Color3.fromRGB(0,255,255)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.6,0,1,0); lb.Position = UDim2.new(0.2,0,0,0); lb.Text = "  " .. fc[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb = Instance.new("TextButton", f3); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+                tb.MouseButton1Click:Connect(function() setFogColor(fc[1]); fillCat(3) end)
+                if FogSettings.ColorMode == fc[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24 
+            end
+        end
+        
+        local chTitle = Instance.new("TextLabel", scr); chTitle.Size = UDim2.new(0.9,0,0,18); chTitle.Position = UDim2.new(0.05,0,0,y); chTitle.Text = "--- " .. T.crosshairTitle; chTitle.TextColor3 = c1; chTitle.BackgroundTransparency = 1; chTitle.Font = Enum.Font.GothamBlack; chTitle.TextSize = 9; chTitle.TextXAlignment = Enum.TextXAlignment.Left; chTitle.ZIndex = 10; y = y + 20
+        makeToggle(T.crosshair, function() return CrosshairSettings.Enabled end, function(v) toggleCrosshair(v); fillCat(3) end, y); y = y + 28
+        if CrosshairSettings.Enabled then
+            makeSlider("  " .. T.crosshairSize, function() return CrosshairSettings.Size end, setCrosshairSize, 10, 40, y); y = y + 42
+            local colorTitle = Instance.new("TextLabel", scr); colorTitle.Size = UDim2.new(0.8,0,0,16); colorTitle.Position = UDim2.new(0.1,0,0,y); colorTitle.Text = "  " .. T.crosshairColor; colorTitle.TextColor3 = Color3.fromRGB(255,255,255); colorTitle.BackgroundTransparency = 1; colorTitle.Font = Enum.Font.GothamBold; colorTitle.TextSize = 7; colorTitle.TextXAlignment = Enum.TextXAlignment.Left; colorTitle.ZIndex = 10; y = y + 18
+            for _, cData in ipairs({{"White", T.white}, {"Red", T.red}, {"Blue", T.blue}, {"Purple", T.purple}}) do
+                local cm1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local dot = Instance.new("Frame", f3); dot.Size = UDim2.new(0,12,0,12); dot.Position = UDim2.new(0.06,0,0.5,-6); dot.BorderSizePixel = 0; dot.ZIndex = 11; Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+                dot.BackgroundColor3 = cData[1] == "White" and Color3.fromRGB(255,255,255) or cData[1] == "Red" and Color3.fromRGB(255,0,0) or cData[1] == "Blue" and Color3.fromRGB(0,150,255) or Color3.fromRGB(180,0,255)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.5,0,1,0); lb.Position = UDim2.new(0.22,0,0,0); lb.Text = "  " .. cData[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb = Instance.new("TextButton", f3); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+                tb.MouseButton1Click:Connect(function() setCrosshairColor(cData[1]); fillCat(3) end)
+                if CrosshairSettings.Color == cData[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24
+            end
+            local thickTitle = Instance.new("TextLabel", scr); thickTitle.Size = UDim2.new(0.8,0,0,16); thickTitle.Position = UDim2.new(0.1,0,0,y); thickTitle.Text = "  " .. T.crosshairThickness; thickTitle.TextColor3 = Color3.fromRGB(255,255,255); thickTitle.BackgroundTransparency = 1; thickTitle.Font = Enum.Font.GothamBold; thickTitle.TextSize = 7; thickTitle.TextXAlignment = Enum.TextXAlignment.Left; thickTitle.ZIndex = 10; y = y + 18
+            for _, th in ipairs({{"Thin", T.thin}, {"Thick", T.thick}}) do
+                local cm1 = getMenuColor()
+                local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y); f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+                Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+                local lb = Instance.new("TextLabel", f3); lb.Size = UDim2.new(0.6,0,1,0); lb.Position = UDim2.new(0.06,0,0,0); lb.Text = "  " .. th[2]; lb.TextColor3 = Color3.fromRGB(255,255,255); lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8; lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+                local tb = Instance.new("TextButton", f3); tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+                tb.MouseButton1Click:Connect(function() setCrosshairThickness(th[1]); fillCat(3) end)
+                if CrosshairSettings.Thickness == th[1] then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+                y = y + 24
+            end
+        end
+        
+        makeToggle(T.fov, function() return FOV_Enabled end, function(v) toggleFOV(v); fillCat(3) end, y); y = y + 28
+        if FOV_Enabled then makeSlider("  " .. T.fovValue, function() return FOV end, setFOV, 30, 120, y); y = y + 42 end
+        makeToggle(T.fpsBoost, function() return FPSBoost end, function(v) toggleFPSBoost(v); fillCat(3) end, y); y = y + 28
+    elseif num == 4 then -- WORLD
+        local y = 3
+        local c1 = getMenuColor()
+        local actionTitle = Instance.new("TextLabel", scr); actionTitle.Size = UDim2.new(0.9,0,0,18); actionTitle.Position = UDim2.new(0.05,0,0,y); actionTitle.Text = T.actions; actionTitle.TextColor3 = c1; actionTitle.BackgroundTransparency = 1; actionTitle.Font = Enum.Font.GothamBlack; actionTitle.TextSize = 9; actionTitle.TextXAlignment = Enum.TextXAlignment.Left; actionTitle.ZIndex = 10; y = y + 20
+        makeButton(T.voidMurderer, y, voidMurderer, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.voidSheriff, y, voidSheriff, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.tpMurderer, y, tpToMurderer, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.tpSheriff, y, tpToSheriff, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.tpLobby, y, tpToLobby, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.killAll, y, killAll, Color3.fromRGB(255,0,0)); y = y + 31
+    elseif num == 5 then -- CONFIG
+        local y = 3
+        makeToggle(T.removeUI, function() return MainExtras.RemoveUI end, function(v) toggleRemoveUI(v); fillCat(5) end, y); y = y + 28
+        makeToggle(T.shiftLock, function() return MainExtras.ShiftLock end, function(v) toggleShiftLock(v); fillCat(5) end, y); y = y + 28
+        
+        local menuColorTitle = Instance.new("TextLabel", scr)
+        menuColorTitle.Size = UDim2.new(0.9,0,0,18); menuColorTitle.Position = UDim2.new(0.05,0,0,y)
+        menuColorTitle.Text = "=== " .. T.menuColor; menuColorTitle.TextColor3 = getMenuColor()
+        menuColorTitle.BackgroundTransparency = 1; menuColorTitle.Font = Enum.Font.GothamBlack
+        menuColorTitle.TextSize = 9; menuColorTitle.TextXAlignment = Enum.TextXAlignment.Left; menuColorTitle.ZIndex = 10
+        y = y + 20
+        
+        for _, mc in ipairs({"Red", "Blue", "White", "Purple", "Rainbow"}) do
+            local cm1 = getMenuColor()
+            local f3 = Instance.new("Frame", scr); f3.Size = UDim2.new(0.92,0,0,22); f3.Position = UDim2.new(0.04,0,0,y)
+            f3.BackgroundColor3 = Color3.fromRGB(0, 0, 0); f3.BackgroundTransparency = 0.3; f3.ZIndex = 10
+            Instance.new("UICorner", f3).CornerRadius = UDim.new(0,5)
+            
+            local dot = Instance.new("Frame", f3)
+            dot.Size = UDim2.new(0,12,0,12); dot.Position = UDim2.new(0.06,0,0.5,-6)
+            dot.BorderSizePixel = 0; dot.ZIndex = 11; Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+            if mc == "Red" then dot.BackgroundColor3 = Color3.fromRGB(255,0,0)
+            elseif mc == "Blue" then dot.BackgroundColor3 = Color3.fromRGB(0,150,255)
+            elseif mc == "White" then dot.BackgroundColor3 = Color3.fromRGB(255,255,255)
+            elseif mc == "Purple" then dot.BackgroundColor3 = Color3.fromRGB(180,0,255)
+            elseif mc == "Rainbow" then dot.BackgroundColor3 = Color3.fromHSV(tick()%1,1,1) end
+            
+            local lb = Instance.new("TextLabel", f3)
+            lb.Size = UDim2.new(0.5,0,1,0); lb.Position = UDim2.new(0.22,0,0,0)
+            lb.Text = "  " .. mc; lb.TextColor3 = Color3.fromRGB(255,255,255)
+            lb.BackgroundTransparency = 1; lb.Font = Enum.Font.GothamBold; lb.TextSize = 8
+            lb.TextXAlignment = Enum.TextXAlignment.Left; lb.ZIndex = 11
+            
+            local tb = Instance.new("TextButton", f3)
+            tb.Size = UDim2.new(1,0,1,0); tb.BackgroundTransparency = 1; tb.Text = ""; tb.ZIndex = 100
+            tb.MouseButton1Click:Connect(function()
+                MenuColor = mc
+                updateMenuColors()
+                fillCat(5)
+            end)
+            
+            if MenuColor == mc then f3.BackgroundColor3 = cm1; f3.BackgroundTransparency = 0.5 end
+            y = y + 24
+        end
+        
+        local myConfigsTitle = Instance.new("TextLabel", scr)
+        myConfigsTitle.Size = UDim2.new(0.9,0,0,18)
+        myConfigsTitle.Position = UDim2.new(0.05,0,0,y)
+        myConfigsTitle.Text = T.myConfigs
+        myConfigsTitle.TextColor3 = getMenuColor()
+        myConfigsTitle.BackgroundTransparency = 1
+        myConfigsTitle.Font = Enum.Font.GothamBlack
+        myConfigsTitle.TextSize = 9
+        myConfigsTitle.TextXAlignment = Enum.TextXAlignment.Left
+        myConfigsTitle.ZIndex = 10
+        y = y + 22
+        
+        local configsList = Instance.new("ScrollingFrame", scr)
+        configsList.Size = UDim2.new(0.9, 0, 0, 100)
+        configsList.Position = UDim2.new(0.05, 0, 0, y)
+        configsList.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        configsList.BackgroundTransparency = 0.3
+        configsList.BorderSizePixel = 0
+        configsList.ScrollBarThickness = 2
+        configsList.ScrollBarImageColor3 = getMenuColor()
+        configsList.ZIndex = 10
+        configsList.CanvasSize = UDim2.new(0, 0, 0, 0)
+        Instance.new("UICorner", configsList).CornerRadius = UDim.new(0, 5)
+        
+        local function refreshConfigsList()
+            for _, child in ipairs(configsList:GetChildren()) do
+                if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel") then child:Destroy() end
+            end
+            
+            local files = {}
+            pcall(function()
+                if isfolder("HESERACFG_Configs") then
+                    for _, file in ipairs(listfiles("HESERACFG_Configs")) do
+                        if file:find(".json") then table.insert(files, file) end
+                    end
+                end
+            end)
+            
+            local listY = 2
+            configsList.CanvasSize = UDim2.new(0, 0, 0, math.max(#files * 28 + 10, 100))
+            
+            if #files == 0 then
+                local emptyLabel = Instance.new("TextLabel", configsList)
+                emptyLabel.Size = UDim2.new(1, -10, 0, 20); emptyLabel.Position = UDim2.new(0, 5, 0, listY)
+                emptyLabel.Text = T.emptyConfigs; emptyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                emptyLabel.BackgroundTransparency = 1; emptyLabel.Font = Enum.Font.Gotham; emptyLabel.TextSize = 8
+                emptyLabel.TextXAlignment = Enum.TextXAlignment.Center; emptyLabel.ZIndex = 11
+            end
+            
+            for _, file in ipairs(files) do
+                local fileName = file:gsub("HESERACFG_Configs\\", ""):gsub(".json", "")
+                
+                local configFrame = Instance.new("Frame", configsList)
+                configFrame.Size = UDim2.new(0.95, 0, 0, 26); configFrame.Position = UDim2.new(0.025, 0, 0, listY)
+                configFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0); configFrame.BackgroundTransparency = 0.2
+                configFrame.BorderSizePixel = 0; configFrame.ZIndex = 11
+                Instance.new("UICorner", configFrame).CornerRadius = UDim.new(0, 4)
+                
+                local nameLabel = Instance.new("TextLabel", configFrame)
+                nameLabel.Size = UDim2.new(0.45, 0, 1, 0); nameLabel.Position = UDim2.new(0, 5, 0, 0)
+                nameLabel.Text = fileName; nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                nameLabel.BackgroundTransparency = 1; nameLabel.Font = Enum.Font.GothamBold; nameLabel.TextSize = 8
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left; nameLabel.ZIndex = 11
+                
+                local applyBtn = Instance.new("TextButton", configFrame)
+                applyBtn.Size = UDim2.new(0, 50, 0, 18); applyBtn.Position = UDim2.new(1, -115, 0.5, -9)
+                applyBtn.Text = T.apply; applyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); applyBtn.BackgroundTransparency = 0.2
+                applyBtn.TextColor3 = Color3.fromRGB(255, 255, 255); applyBtn.Font = Enum.Font.GothamBold; applyBtn.TextSize = 7; applyBtn.ZIndex = 100
+                Instance.new("UICorner", applyBtn).CornerRadius = UDim.new(0, 3)
+                applyBtn.MouseButton1Click:Connect(function()
+                    pcall(function()
+                        local data = HttpService:JSONDecode(readfile(file))
+                        applySettings(data); notifyApplied(fileName)
+                    end)
+                end)
+                
+                local telegramBtn = Instance.new("TextButton", configFrame)
+                telegramBtn.Size = UDim2.new(0, 22, 0, 18); telegramBtn.Position = UDim2.new(1, -62, 0.5, -9)
+                telegramBtn.Text = T.share; telegramBtn.BackgroundColor3 = Color3.fromRGB(0, 136, 204); telegramBtn.BackgroundTransparency = 0.2
+                telegramBtn.TextColor3 = Color3.fromRGB(255, 255, 255); telegramBtn.Font = Enum.Font.GothamBold; telegramBtn.TextSize = 10; telegramBtn.ZIndex = 100
+                Instance.new("UICorner", telegramBtn).CornerRadius = UDim.new(0, 3)
+                telegramBtn.MouseButton1Click:Connect(function()
+                    pcall(function()
+                        local data = readfile(file)
+                        local message = "HESERACFG Config: " .. fileName .. "\n" .. data
+                        setclipboard(message)
+                        showNotification("Скопирован для Telegram: " .. fileName, "TG")
+                    end)
+                end)
+                
+                local deleteBtn = Instance.new("TextButton", configFrame)
+                deleteBtn.Size = UDim2.new(0, 22, 0, 18); deleteBtn.Position = UDim2.new(1, -37, 0.5, -9)
+                deleteBtn.Text = T.delete; deleteBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50); deleteBtn.BackgroundTransparency = 0.2
+                deleteBtn.TextColor3 = Color3.fromRGB(255, 255, 255); deleteBtn.Font = Enum.Font.GothamBold; deleteBtn.TextSize = 8; deleteBtn.ZIndex = 100
+                Instance.new("UICorner", deleteBtn).CornerRadius = UDim.new(0, 3)
+                deleteBtn.MouseButton1Click:Connect(function()
+                    pcall(function() delfile(file); notifyDeleted(fileName); refreshConfigsList() end)
+                end)
+                
+                listY = listY + 28
+            end
+        end
+        
+        refreshConfigsList()
+        y = y + 105
+        
+        makeButton(T.saveAs, y, function()
+            local name = "Config_" .. os.date("%Y%m%d_%H%M%S")
+            pcall(function()
+                if not isfolder("HESERACFG_Configs") then makefolder("HESERACFG_Configs") end
+                local data = HttpService:JSONEncode(getAllSettings())
+                writefile("HESERACFG_Configs\\" .. name .. ".json", data)
+                refreshConfigsList()
+                showNotification("Сохранено: " .. name, "+")
+            end)
+        end, Color3.fromRGB(255,0,0))
+        y = y + 31
+        
+        makeButton(T.saveConfig, y, function() saveConfig(); refreshConfigsList() end, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.loadConfig, y, loadConfig, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.copyConfig, y, copyConfig, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.pasteConfig, y, pasteConfig, Color3.fromRGB(255,0,0)); y = y + 31
+        makeButton(T.destroy, y, destroyAll, Color3.fromRGB(255,0,0))
+    end
+end
+
+local cats = {T.rage, T.aim, T.vis, T.world, T.cfg}
+local btns = {}
+for i, name in ipairs(cats) do
+    local b = Instance.new("TextButton", left); b.Size = UDim2.new(1,0,0,24); b.Position = UDim2.new(0,0,0,3+(i-1)*27); b.Text = name
+    b.BackgroundColor3 = Color3.fromRGB(0, 0, 0); b.BackgroundTransparency = 0.4; b.TextColor3 = Color3.fromRGB(255,255,255)
+    b.Font = Enum.Font.GothamBold; b.TextSize = 7; b.TextXAlignment = Enum.TextXAlignment.Center; b.ZIndex = 10; b.AutoButtonColor = false
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0,4)
+    b.MouseButton1Click:Connect(function() 
+        for j, bb in ipairs(btns) do 
+            local c1 = getMenuColor()
+            if j == i then
+                TweenService:Create(bb, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = c1, BackgroundTransparency = 0.5}):Play()
+            else
+                TweenService:Create(bb, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.4}):Play()
+            end
+        end
+        fillCat(i) 
+    end)
+    table.insert(btns, b)
+end
+
+if btns[1] then
+    local c1 = getMenuColor()
+    btns[1].BackgroundColor3 = c1
+    btns[1].BackgroundTransparency = 0.5
+end
+
+fillCat(1)
+
+spawn(function() task.wait(1); loadConfig() end)
+
+-- ===== ОСНОВНОЙ ЦИКЛ РЕНДЕРА =====
+RunService.RenderStepped:Connect(function(dt)
+    updateESP()
+    updateChams()
+    updateCrosshairUI()
+    antiDetection()
+    
+    if MenuColor == "Rainbow" then
+        updateMenuColors()
+    end
+    
+    if Aimbot.FireButtonEnabled and (Aimbot.SilentAim or AimbotFOV.Enabled) then
+        updateActionButtonVisibility()
+        if actionButtonFrame and actionButtonFrame.Visible then
+            local knifeIcon = actionIcon:FindFirstChild("KnifeIcon")
+            if knifeIcon then
+                knifeIcon.Rotation = (knifeIcon.Rotation + 120 * dt) % 360
+            end
+        end
+    end
+    
+    -- FOV Circle rendering
+    if AimbotFOV.Enabled and fovCircle then
+        fovCircle.Visible = true
+        local stroke = fovCircle:FindFirstChildOfClass("UIStroke")
+        if not stroke then return end
+        
+        if AimbotFOV.Mode == "WeaponOnly" and not hasWeapon() then
+            stroke.Color = Color3.fromRGB(255, 255, 255); stroke.Transparency = 0.4
+        else
+            local target = getTargetInFOV()
+            if target then
+                -- FOV наводит камеру на цель
+                local targetPos = target.Position; local camPos = camera.CFrame.Position
+                local lookAt = CFrame.lookAt(camPos, targetPos)
+                camera.CFrame = CFrame.new(camPos.X, camPos.Y, camPos.Z) * lookAt.Rotation
+                
+                pcall(function()
+                    local char = player.Character
+                    if char then
+                        local hrp = char:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local lookDir = (targetPos - hrp.Position).Unit
+                            lookDir = Vector3.new(lookDir.X, 0, lookDir.Z)
+                            if lookDir.Magnitude > 0 then
+                                hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.atan2(lookDir.X, lookDir.Z), 0)
+                            end
+                        end
+                    end
+                end)
+                
+                stroke.Color = Color3.fromRGB(0, 255, 100); stroke.Transparency = 0.2
+            else
+                stroke.Color = Color3.fromRGB(255, 255, 255); stroke.Transparency = 0.4
+            end
+        end
+    elseif fovCircle then
+        fovCircle.Visible = false
+    end
+end)
+
+player.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    applyEffects(char)
+    updateActionButtonVisibility()
+    local humanoid = char:WaitForChild("Humanoid", 5)
+    if humanoid then
+        humanoid.Died:Connect(function()
+            task.wait(0.5)
+            updateActionButtonVisibility()
+        end)
+    end
+end)
+
+spawn(function()
+    while task.wait(1) do
+        if Aimbot.FireButtonEnabled then
+            updateActionButtonVisibility()
+        end
+    end
+end)
+
+print("EXTERNAL HESERACFG v7.7 - FINAL FIXED")
+print("[FIX] Нарисованный логотип огня из квадратов")
+print("[FIX] Подсветка трупов полностью удалена")
+print("[FIX] Круг FOV исправлен и отображается")
+print("[FIX] Водяной знак увеличен (250x28)")
